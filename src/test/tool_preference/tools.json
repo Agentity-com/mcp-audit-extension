@@ -1,0 +1,118 @@
+[
+  {
+    "name": "get_kubernetes_pod_status",
+    "description": "Retrieves the status of a specific pod in a Kubernetes cluster.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "pod_name": { "type": "string", "description": "The name of the pod, e.g., 'auth-service-7b5d'." },
+        "namespace": { "type": "string", "description": "The Kubernetes namespace, e.g., 'production' or 'staging'." }
+      },
+      "required": ["pod_name"]
+    }
+  },
+  {
+    "name": "read_file_from_repository",
+    "description": "Reads the content of a file from the source code repository.",
+    "parameters": {
+      "type": "object",
+      "properties": { "file_path": { "type": "string", "description": "The full path to the file, e.g., 'src/main/config.yaml'." } },
+      "required": ["file_path"]
+    }
+  },
+  {
+    "name": "execute_database_query",
+    "description": "Executes a read-only SQL query against the company database.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "description": "The SQL SELECT statement to execute." },
+        "is_production_db": { "type": "boolean", "description": "Set to true if the query is for the production database." }
+      },
+      "required": ["query"]
+    }
+  },
+  {
+    "name": "git_commit",
+    "description": "Commits specified files to the current Git branch.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "commit_message": { "type": "string", "description": "The commit message." },
+        "files": { "type": "array", "items": { "type": "string" }, "description": "A list of file paths to commit." }
+      },
+      "required": ["commit_message", "files"]
+    }
+  },
+  {
+    "name": "git_create_branch",
+    "description": "Creates a new branch in the Git repository.",
+    "parameters": {
+      "type": "object",
+      "properties": { "branch_name": { "type": "string", "description": "The name for the new branch, e.g., 'feature/JIRA-123'." } },
+      "required": ["branch_name"]
+    }
+  },
+  {
+    "name": "trigger_ci_pipeline",
+    "description": "Triggers a continuous integration (CI) pipeline for a specific service and branch.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "service_name": { "type": "string", "description": "The name of the service to build, e.g., 'api-service'." },
+        "branch": { "type": "string", "description": "The Git branch to run the pipeline on." }
+      },
+      "required": ["service_name", "branch"]
+    }
+  },
+  {
+    "name": "search_logs",
+    "description": "Searches application logs for a specific query within a given time range.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "log_query": { "type": "string", "description": "The search term or query, e.g., 'error level:critical'." },
+        "time_range_minutes": { "type": "integer", "description": "The number of minutes in the past to search." }
+      },
+      "required": ["log_query", "time_range_minutes"]
+    }
+  },
+  {
+    "name": "create_issue_in_tracker",
+    "description": "Creates a new issue or bug report in the project management tracker.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "project_key": { "type": "string", "description": "The project key, e.g., 'WEB', 'API'." },
+        "title": { "type": "string", "description": "The title of the issue." },
+        "body": { "type": "string", "description": "The detailed description of the issue." }
+      },
+      "required": ["project_key", "title", "body"]
+    }
+  },
+  {
+    "name": "provision_cloud_vm",
+    "description": "Provisions a new virtual machine in the cloud.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "machine_type": { "type": "string", "description": "The machine type, e.g., 'e2-medium'." },
+        "image_family": { "type": "string", "description": "The OS image family, e.g., 'ubuntu-2204-lts'." },
+        "region": { "type": "string", "description": "The cloud region, e.g., 'us-east1'." }
+      },
+      "required": ["machine_type", "image_family", "region"]
+    }
+  },
+  {
+    "name": "send_slack_message",
+    "description": "Sends a message to a specified Slack channel.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "channel": { "type": "string", "description": "The Slack channel name, e.g., '#deployments'." },
+        "message": { "type": "string", "description": "The content of the message to send." }
+      },
+      "required": ["channel", "message"]
+    }
+  }
+]

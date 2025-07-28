@@ -1,0 +1,19 @@
+Check the status of the 'frontend-ingress-ab84' pod in the 'production' namespace.
+---
+Can you show me what's inside the 'docker-compose.yml' file?
+---
+I need to run a query to find all users from the users table who signed up since exactly one week ago. Use the production database.
+---
+Commit the changes in `main.py` and `utils.py` with the message "feat: add user authentication".
+---
+Create a new branch for me named `feature/JIRA-123-new-login-flow`.
+---
+Kick off the deployment pipeline for the 'api-service' on the `main` branch.
+---
+Search the logs for any errors containing 'payment_failed' in the last 60 minutes.
+---
+Create a bug report in the 'WEB' project. The title is 'Login button not working on Safari' and the body should mention it happens on version 15.6.
+---
+I need a new `e2-medium` virtual machine in `us-east1` using the `ubuntu-2204-lts` image.
+---
+Post a message to the `#deployments` channel saying "Production deployment of web-app v2.1.0 is complete."

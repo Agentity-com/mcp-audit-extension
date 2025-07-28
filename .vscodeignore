@@ -1,0 +1,9 @@
+.vscode
+.gitignore
+out/
+src/
+node_modules/
+esbuild.js
+tsconfig.json
+tap_server*.log
+*-audit.json

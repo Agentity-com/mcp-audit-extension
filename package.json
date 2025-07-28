@@ -1,0 +1,195 @@
+{
+    "name": "mcp-audit-extension",
+    "displayName": "MCP Audit Extension",
+    "description": "Dynamically intercepts MCP configurations to add logging via a tap server.",
+    "publisher": "Agentity",
+    "version": "1.0.1",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Agentity-com/mcp-audit-extension.git"
+    },
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "contributes": {
+        "mcpServerDefinitionProviders": [
+            {
+                "id": "mcpAuditProvider",
+                "label": "MCP Audit Provider"
+            }
+        ],
+        "configuration": {
+            "title": "MCP Audit",
+            "type": "object",
+            "properties": {
+                "mcpAudit.forwarders": {
+                    "type": "array",
+                    "description": "Configuration for one or more log forwarders.",
+                    "default": [],
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "name",
+                            "type",
+                            "enabled"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "A unique, user-friendly name for this forwarder."
+                            },
+                            "enabled": {
+                                "type": "boolean",
+                                "description": "Enable or disable this specific forwarder.",
+                                "default": true
+                            },
+                            "type": {
+                                "type": "string",
+                                "description": "The type of the forwarder.",
+                                "enum": [
+                                    "HEC",
+                                    "CEF",
+                                    "FILE"
+                                ]
+                            }
+                        },
+                        "oneOf": [
+                            {
+                                "properties": {
+                                    "type": {
+                                        "const": "HEC"
+                                    },
+                                    "url": {
+                                        "type": "string",
+                                        "description": "The full URL of the Splunk HEC endpoint.",
+                                        "format": "uri"
+                                    },
+                                    "tokenSecretKey": {
+                                        "type": "string",
+                                        "description": "The key to look up the HEC token from the secret store."
+                                    },
+                                    "sourcetype": {
+                                        "type": "string",
+                                        "description": "(Optional) The sourcetype for the events."
+                                    },
+                                    "index": {
+                                        "type": "string",
+                                        "description": "(Optional) The Splunk index to send data to."
+                                    }
+                                },
+                                "required": [
+                                    "url",
+                                    "tokenSecretKey"
+                                ]
+                            },
+                            {
+                                "properties": {
+                                    "type": {
+                                        "const": "CEF"
+                                    },
+                                    "host": {
+                                        "type": "string",
+                                        "description": "The IP address or hostname of the Syslog server."
+                                    },
+                                    "port": {
+                                        "type": "integer",
+                                        "description": "The port number of the Syslog server."
+                                    },
+                                    "protocol": {
+                                        "type": "string",
+                                        "enum": [
+                                            "tcp",
+                                            "udp",
+                                            "tls"
+                                        ],
+                                        "description": "The transport protocol to use."
+                                    }
+                                },
+                                "required": [
+                                    "host",
+                                    "port",
+                                    "protocol"
+                                ]
+                            },
+                            {
+                                "properties": {
+                                    "type": {
+                                        "const": "FILE"
+                                    },
+                                    "path": {
+                                        "type": "string",
+                                        "description": "The full path to the local log file."
+                                    }
+                                },
+                                "required": [
+                                    "path"
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "main": "./dist/extension.js",
+    "scripts": {
+        "clean": "rimraf out dist",
+        "compile": "npm run check-types && node esbuild.js",
+        "check-types": "tsc --noEmit",
+        "watch": "npm-run-all -p watch:*",
+        "watch:esbuild": "node esbuild.js --watch",
+        "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+        "vscode:prepublish": "npm run clean && npm run package",
+        "package": "npm run check-types && node esbuild.js --production",
+        "compile-tests": "tsc -p . --outDir out",
+        "copy:resources": "copyfiles -u 1 \"src/*.txt\" \"src/*.json\" out",
+        "pretest": "npm run clean && npm run compile-tests && npm run copy:resources",
+        "test": "mocha --require ts-node/register --timeout 15000 --colors src/test/**/*.test.ts"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.16.0",
+        "dotenv": "^16.0.0",
+        "express": "^5.1.0",
+        "fs.promises.exists": "^1.1.4",
+        "http-proxy-middleware": "^3.0.5",
+        "mcp-proxy": "^5.4.0",
+        "sql.js": "^1.13.0",
+        "syslog-pro": "^1.0.0",
+        "winston": "^3.0.0",
+        "winston-daily-rotate-file": "^4.0.0",
+        "yargs": "^17.0.0"
+    },
+    "devDependencies": {
+        "@types/chai": "^4.3.16",
+        "@types/chai-as-promised": "^8.0.2",
+        "@types/chai-subset": "^1.3.6",
+        "@types/express": "^5.0.3",
+        "@types/mocha": "^10.0.10",
+        "@types/mock-fs": "^4.13.4",
+        "@types/node": "^18.0.0",
+        "@types/sql.js": "^1.4.9",
+        "@types/syslog-pro": "^1.0.3",
+        "@types/tmp": "^0.2.6",
+        "@types/vscode": "^1.85.0",
+        "@types/yargs": "^17.0.0",
+        "@vscode/vsce": "^3.6.0",
+        "chai": "^5.1.1",
+        "chai-as-promised": "^8.0.1",
+        "chai-subset": "^1.6.0",
+        "copyfiles": "^2.4.1",
+        "esbuild": "^0.25.8",
+        "esbuild-plugin-copy": "^2.1.1",
+        "fastmcp": "^3.9.0",
+        "mocha": "^10.8.2",
+        "mock-fs": "^5.5.0",
+        "npm-run-all": "^4.1.5",
+        "rimraf": "^6.0.1",
+        "selfsigned": "^2.4.1",
+        "tmp": "^0.2.3",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.3.3"
+    }
+}

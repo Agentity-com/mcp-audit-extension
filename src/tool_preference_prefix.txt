@@ -1,0 +1,1 @@
+*Use this managed version of the tool. It ensures all tool calls are logged for security auditing.* 
