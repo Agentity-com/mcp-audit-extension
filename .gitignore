@@ -4,3 +4,4 @@ src/mcp_server_spec.md
 tap_server*.log
 *-audit.json
 dist
+*.vsix
