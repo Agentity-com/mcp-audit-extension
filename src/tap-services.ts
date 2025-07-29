@@ -13,6 +13,7 @@ import { Syslog, CEF } from 'syslog-pro';
 import tls from 'tls';
 import net from 'net';
 import { createStream as createRotatingFileStream, RotatingFileStream } from 'rotating-file-stream';
+import { logger } from './logger';
 
 // For now we do not support TLS verification
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -80,7 +81,7 @@ export function isForwarding(): boolean {
 
 export function initForwarders(fowardersConfig: any[], secrets?: Record<string, string>): void {
     // First, process any new secrets that may have been dropped.
-    console.log('Initializing loggers based on configuration...');
+    logger.info('Initializing loggers based on configuration...');
 
     // De-initialize old loggers here if necessary...
     resetLogForwarders();
@@ -92,26 +93,26 @@ export function initForwarders(fowardersConfig: any[], secrets?: Record<string, 
                     const token = secrets?.[forwarderConfig.tokenSecretKey];
                     if (token) {
                         addLogForwarder(new HECForwarder({ ...forwarderConfig, token }));
-                        console.log(`Set up HEC forwarder: "${forwarderConfig.name}"`);
+                        logger.info(`Set up HEC forwarder: "${forwarderConfig.name}"`);
                     } else {
-                        console.error(`Secret key ${forwarderConfig.tokenSecretKey} not found for HEC forwarder ${forwarderConfig.name}. Not creating it.`);
+                        logger.error(`Secret key ${forwarderConfig.tokenSecretKey} not found for HEC forwarder ${forwarderConfig.name}. Not creating it.`);
                     }
                     break;
                 }
 
                 case 'CEF': {
                     addLogForwarder(new CEFForwarder(forwarderConfig));
-                    console.log(`Set up CEF/Syslog forwarder: ${forwarderConfig.name}`);
+                    logger.info(`Set up CEF/Syslog forwarder: ${forwarderConfig.name}`);
                     break;
                 }
 
                 case 'FILE': {
                     if (path.isAbsolute(forwarderConfig.path)) {
                         addLogForwarder(new FileForwarder(forwarderConfig));
-                        console.log(`Set up file forwarder: ${forwarderConfig.name} to path ${forwarderConfig.path}`);
+                        logger.info(`Set up file forwarder: ${forwarderConfig.name} to path ${forwarderConfig.path}`);
                     }
                     else {
-                        console.error(`Provided invalid absolute path ${forwarderConfig.path} for file forwarder ${forwarderConfig.name}. Not creating it.`);
+                        logger.error(`Provided invalid absolute path ${forwarderConfig.path} for file forwarder ${forwarderConfig.name}. Not creating it.`);
                     }
                     break;
                 }
@@ -120,7 +121,7 @@ export function initForwarders(fowardersConfig: any[], secrets?: Record<string, 
                     throw new Error(`Unknown forwarder type ${forwarderConfig.type}`);
             }
         } catch (e) {
-            console.error(`Could not create forwarder ${forwarderConfig.name}`, e);
+            logger.error(`Could not create forwarder ${forwarderConfig.name}`, e);
         }
     }
 }
@@ -128,7 +129,7 @@ export function initForwarders(fowardersConfig: any[], secrets?: Record<string, 
 // ConsoleLogger implementation
 export class ConsoleLogger implements LogForwarder {
     async forward(record: LogRecord): Promise<void> {
-        console.info('MCP Event', record);
+        logger.info('MCP Event', record);
     }
 }
 
@@ -221,7 +222,7 @@ export class CEFForwarder implements LogForwarder {
                 socket = tls.connect({ port: config.port, host: config.host, rejectUnauthorized: false }, callback);
             }
             socket.on('error', () => {
-                console.error('Syslog TCP connection cannot be established');
+                logger.error('Syslog TCP connection cannot be established');
                 socket.destroy();
             });
             socket.on('timeout', () => {

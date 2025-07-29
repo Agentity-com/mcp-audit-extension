@@ -1,7 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -20,13 +18,6 @@ import { logger } from './logger';
 async function main() {
     // 1. Argument Parsing
     const argvParser = yargs(hideBin(process.argv))
-        .option('header', {
-            alias: 'H',
-            type: 'array',
-            description: 'Headers to forward to HTTP target (e.g., KEY:VALUE)',
-            string: true,
-            default: [],
-        })
         .option('env-file', {
             type: 'string',
             description: 'Path to .env file for spawned command',
@@ -46,7 +37,6 @@ async function main() {
             description: 'Path to settings.json file to read forwarders configuration',
             default: pathJoin(getVSCodeFolder(), "settings.json")
         })
-        // No --http-transport-type, will be inferred
         .help()
         .alias('help', 'h');
 
@@ -113,106 +103,68 @@ async function main() {
         }
     }
 
-    // Prepare headers for HTTP target (if HTTP target)
-    const httpHeaders: Record<string, string> = {};
-    (argv.header as string[]).forEach((header) => {
-        const [key, ...valueParts] = header.split(':');
-        if (key && valueParts.length > 0) {
-            httpHeaders[key.trim()] = valueParts.join(':').trim();
-        } else {
-            logger.warn(
-                `[${originalTargetName}] Warning: Malformed --header entry: ${header}`
-            );
-        }
-    });
-
     logger.info(
         `[${tappedServerName}] Initializing for target: ${originalTargetName}`
     );
     try {
         // 2. Create Client Transport for the actual target server
-        if (target.startsWith('http') || target.startsWith('https')) {
-            const remoteUrl = new URL(target);
-            if (target.endsWith('/sse')) {
-                logger.info(
-                    `[${originalTargetName}] Target is SSE HTTP: ${target}`
-                );
-                targetClientTransport = new SSEClientTransport(
-                    remoteUrl,
-                    httpHeaders
-                );
-            } else {
-                logger.info(
-                    `[${originalTargetName}] Target is Streamable HTTP: ${target}`
-                );
-                targetClientTransport = new StreamableHTTPClientTransport(
-                    remoteUrl,
-                    httpHeaders
-                );
-            }
-        } else {
-            logger.info(
-                `[${originalTargetName}] Target is a command: ${target} ${targetArgs.join(
-                    ' '
-                )}`
+        logger.info(
+            `[${originalTargetName}] Target is a command: ${target} ${targetArgs.join(
+                ' '
+            )}`
+        );
+        childProc = spawn(target, targetArgs, {
+            env: spawnEnv,
+            shell: true,
+            stdio: ['pipe', 'pipe', 'pipe'], // stdin, stdout, stderr
+        });
+
+        if (!childProc.stdin || !childProc.stdout || !childProc.stderr) {
+            throw new Error(
+                'Failed to get stdio streams from child process.'
             );
-            childProc = spawn(target, targetArgs, {
-                env: spawnEnv,
-                shell: true,
-                stdio: ['pipe', 'pipe', 'pipe'], // stdin, stdout, stderr
-            });
-
-            if (!childProc.stdin || !childProc.stdout || !childProc.stderr) {
-                throw new Error(
-                    'Failed to get stdio streams from child process.'
-                );
-            }
-
-            childProc.stderr.on('data', (data) => {
-                logger.error(
-                    `[${originalTargetName}] Target STDERR: ${data
-                        .toString()
-                        .trim()}`
-                );
-            });
-
-            childProc.on('error', (err) => {
-                logger.error(
-                    `[${originalTargetName}] Error with target command '${target}': ${err.message}`
-                );
-                // McpServer and proxyServer might already be running; need graceful shutdown.
-                // For now, exiting, but a more robust solution might involve closing transports.
-                process.exit(1);
-            });
-
-            childProc.on('exit', (code, signal) => {
-                const exitCode =
-                    code ??
-                    (signal
-                        ? 128 +
-                        (osConstants.signals[
-                            signal as keyof typeof osConstants.signals
-                        ] || 0)
-                        : 1);
-                logger.info(
-                    `[${originalTargetName}] Target command exited with code ${exitCode} (signal: ${signal || 'unknown'
-                    })`
-                );
-                // This will also cause the tap server to exit if proxyServer is tied to this transport.
-                // Consider if tap server should exit or just log and stop proxying.
-                process.exit(exitCode);
-            });
-
-            targetClientTransport = new StdioClientTransport({
-                command: target,
-                args: targetArgs,
-                env: Object.entries(spawnEnv).reduce(
-                    (acc, [key, value]) =>
-                        value !== undefined ? { ...acc, [key]: value } : acc,
-                    {} as Record<string, string>
-                ),
-            });
         }
+
+        childProc.stderr.on('data', (data) => {
+            logger.error(
+                `[${originalTargetName}] Target STDERR: ${data
+                    .toString()
+                    .trim()}`
+            );
+        });
+
+        childProc.on('error', (err) => {
+            logger.error(
+                `[${originalTargetName}] Error with target command '${target}': ${err.message}`
+            );
+            // McpServer and proxyServer might already be running; need graceful shutdown.
+            // For now, exiting, but a more robust solution might involve closing transports.
+            process.exit(1);
+        });
+
+        childProc.on('exit', (code, signal) => {
+            const exitCode =
+                code ?? 
+                (signal ? 128 + (osConstants.signals[signal as keyof typeof osConstants.signals] || 0) : 1);
+            logger.info(
+                `[${originalTargetName}] Target command exited with code ${exitCode} (signal: ${signal || 'unknown'
+                })`
+            );
+            // This will also cause the tap server to exit if proxyServer is tied to this transport.
+            // Consider if tap server should exit or just log and stop proxying.
+            process.exit(exitCode);
+        });
+
+        targetClientTransport = new StdioClientTransport({
+            command: target,
+            args: targetArgs,
+            env: Object.entries(spawnEnv).reduce(
+                (acc, [key, value]) =>
+                    value !== undefined ? { ...acc, [key]: value } : acc,
+                {} as Record<string, string>
+            ),
+        });
+        
 
         // 3. Launch the client and connect it, then tap the client transport for logging
         // tapTransport takes the transport and a callback for messages

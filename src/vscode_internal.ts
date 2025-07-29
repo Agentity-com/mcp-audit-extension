@@ -3,6 +3,7 @@ import { ExtensionContext, SecretStorage } from 'vscode';
 import fs from 'fs/promises';
 import path from 'path';
 import initSqlJs, { type Database } from 'sql.js';
+import { logger } from './logger';
 
 /*
 This module contains logic that 'hacks' internal VS code structures. We only use this for capabilities
@@ -53,7 +54,7 @@ export class InputVariableRetriever {
             const SQL = await initSqlJs();
             return new SQL.Database(dbBytes);        
         } catch (ex) {
-            console.error('Error loading database', ex);
+            logger.error('Error loading database', ex);
             throw ex;
         }
     }
@@ -84,7 +85,7 @@ export class InputVariableRetriever {
             const result: any = db.exec(`SELECT value FROM ItemTable WHERE key = "secret://${MCP_ENCRYPTION_KEY}"`)[0];
             
             if (!result) {
-                console.warn('MCP encryption key was not set yet');
+                logger.warn('MCP encryption key was not set yet');
                 return;
             }
             
@@ -102,7 +103,7 @@ export class InputVariableRetriever {
             this.writeDB(db, true);
             
         } catch (ex) {
-            console.error("Error while copying MCP encryption key", ex);
+            logger.error("Error while copying MCP encryption key", ex);
         } finally {
             if (db!) {
                 db.close();
@@ -129,7 +130,7 @@ export class InputVariableRetriever {
             // Load key
             const secretKey = await this.getEncryptionKey();
             if (!secretKey) {
-                console.warn('MCP encryption key could not be retrieved. Likely need to restart VScode.');
+                logger.warn('MCP encryption key could not be retrieved. Likely need to restart VScode.');
                 return {};
             }
             
@@ -144,7 +145,7 @@ export class InputVariableRetriever {
             const decodedStr = new TextDecoder().decode(new Uint8Array(decrypted));
             return JSON.parse(decodedStr);
         } catch (ex) {
-            console.error('Failed to decrypt secret inputs', ex);
+            logger.error('Failed to decrypt secret inputs', ex);
             return {};
         }
     }
@@ -199,7 +200,7 @@ export class InputVariableRetriever {
                 }
             }
         } catch (ex) {
-            console.error('Error attempting to resolve input variables', ex);
+            logger.error('Error attempting to resolve input variables', ex);
         } finally {
             if (db) {
                 db.close();
@@ -221,7 +222,7 @@ export class InputVariableRetriever {
                 // If row exists and has a value, parse it. Otherwise, start with a new object.
                 mcpData = row && row.values ? JSON.parse(row.values) : { version: 1, values: {} };
             } catch (e) {
-                console.warn(`Failed to parse existing mcpInputs JSON, initializing a new one. Error:`, e);
+                logger.warn(`Failed to parse existing mcpInputs JSON, initializing a new one. Error:`, e);
                 mcpData = { values: {} };
             }
             
@@ -255,7 +256,7 @@ export class InputVariableRetriever {
             
             this.writeDB(db);
         } catch (ex) {
-            console.error('Error attempting to resolve input variables', ex);
+            logger.error('Error attempting to resolve input variables', ex);
         } finally {
             if (db) {
                 db.close();

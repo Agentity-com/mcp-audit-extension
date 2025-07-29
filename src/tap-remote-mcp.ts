@@ -11,8 +11,7 @@ import {
     forwardLog 
 } from './tap-services';
 import { Readable } from 'stream';
-
-//import { logger } from '.logger';
+import { logger } from './logger';
 
 /*
 The remote tap *could have been* implemented instead as an MCP server-client pair that proxies the
@@ -54,7 +53,7 @@ export function updateProxyConfig(newConfig: Record<string, URL>): void {
         newConfig === null ||
         Array.isArray(newConfig)
     ) {
-        console.error(
+        logger.error(
             'Invalid configuration. New config must be a JSON object.'
         );
         return;
@@ -66,7 +65,7 @@ export function updateProxyConfig(newConfig: Record<string, URL>): void {
             // Validate that the value is a proper URL.
             sanitizedConfig[sanitizedKey] = new URL(newConfig[key]);
         } catch (error) {
-            console.warn(
+            logger.warn(
                 `[Config] Invalid URL format for key "${key}": "${newConfig[key]}". Skipping this entry.`
             );
         }
@@ -74,7 +73,7 @@ export function updateProxyConfig(newConfig: Record<string, URL>): void {
 
     // Atomically replace the old configuration with the new one.
     proxyConfig = sanitizedConfig;
-    console.log(
+    logger.info(
         'Proxy configuration updated. Active routes:',
         Object.entries(proxyConfig).map(
             ([key, value]) => `/${key} -> ${value.toString()}`
@@ -236,12 +235,12 @@ export function startRemoteMcpProxy() {
                     res.setHeader('Content-Length', Buffer.byteLength(response, 'utf8'));
                     res.write(response);
                 } catch (err) {
-                    console.error("JSON stream error:", err);
+                    logger.error("JSON stream error:", err);
                 }
                 res.end();
             });
             proxyRes.on('error', (err: Error) => {
-                console.error("JSON stream error:", err);
+                logger.error("JSON stream error:", err);
                 res.end();
             });
 
@@ -275,7 +274,7 @@ export function startRemoteMcpProxy() {
             proxyRes.on('data', (chunk: Buffer) => sseParser.feed(chunk.toString()));
             proxyRes.on('end', () => res.end());
             proxyRes.on('error', (err: Error) => {
-                console.error("SSE proxy stream error:", err);
+                logger.error("SSE proxy stream error:", err);
                 res.end();
             });
         } else {
@@ -287,16 +286,16 @@ export function startRemoteMcpProxy() {
 
 
     server = app.listen(PORT, '127.0.0.1', () => {
-        console.log(
+        logger.info(
             `Configurable proxy server listening on http://localhost:${PORT}`
         );
-        console.log('Call updateProxyConfig to set up proxy routes.');
+        logger.info('Call updateProxyConfig to set up proxy routes.');
     });
 }
 
 export function stopRemoteMcpProxy() {
     if (!server) {
-        console.warn("Attempting stop proxy that wasn't started");
+        logger.warn("Attempting stop proxy that wasn't started");
         return;
     }
 

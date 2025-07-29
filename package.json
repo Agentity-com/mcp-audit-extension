@@ -165,8 +165,7 @@
         "rotating-file-stream": "^3.2.6",
         "sql.js": "^1.13.0",
         "syslog-pro": "^1.0.0",
-        "winston": "^3.0.0",
-        "winston-daily-rotate-file": "^4.0.0",
+        "winston": "^3.17.0",
         "yargs": "^17.0.0"
     },
     "devDependencies": {

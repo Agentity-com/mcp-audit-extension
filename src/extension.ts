@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { logger } from './logger';
 import { getAgentId, getVSCodeFolder } from './metadata';
 import {
     startRemoteMcpProxy,
@@ -11,18 +10,17 @@ import {
 } from './tap-remote-mcp';
 import { initForwarders, isForwarding } from './tap-services';
 import { InputVariableRetriever } from './vscode_internal';
+import { logger, SUPPRESS_STDOUT_LOGS_ENV_VAR_NAME } from './logger';
 
 const INPUT_VARIABLE_REGEX: RegExp = /^\$\{input:(.*?)\}$/;
 const TAPPED_SERVER_SUFFIX = ' (tapped)';
 const SECRET_STORAGE_KEY = 'mcpTapForwarderKeys'
 
 /**
-* Main activation function for the extension.
+ * Main activation function for the extension.
 */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    console.log('Activating MCP Audit extension');
-
-    console.log(vscode.lm.tools.map(e => e.name));
+    logger.info('Activating MCP Audit extension');
 
     const getForwardersConfig = () => {
         const config = vscode.workspace.getConfiguration('mcpAudit');
@@ -41,7 +39,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     disposable = vscode.workspace.onDidChangeConfiguration((event) => {
         const isMcpConfigAffectedPromise = new Promise<boolean>(resolve => {
             if (event.affectsConfiguration('mcp')) {
-                console.log('MCP servers configuration change detected.');
+                logger.info('MCP servers configuration change detected.');
                 resolve(true);
             } else {
                 resolve(false);
@@ -50,13 +48,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
         const isTapConfigAffectedPromise = new Promise<boolean>(resolve => {
             if (event.affectsConfiguration('mcpAudit')) {
-                console.log('MCP tap configuration change detected.');
+                logger.info('MCP tap configuration change detected.');
                 const wasForwarding = isForwarding();
                 loadSecretsFromFile(context).then(secrets => {
                     initForwarders(getForwardersConfig(), secrets);
                     const isForwardingNow = isForwarding();
                     if (!wasForwarding && isForwardingNow) {
-                        console.log('Forwarding was disabled and is now enabled, which requires a refresh.');
+                        logger.info('Forwarding was disabled and is now enabled, which requires a refresh.');
                         resolve(true);
                     } else {
                         resolve(false);
@@ -69,7 +67,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
         Promise.all([isMcpConfigAffectedPromise, isTapConfigAffectedPromise]).then(([mcpConfigChange, tapConfigChange]) => {
             if (mcpConfigChange || tapConfigChange) {
-                console.log('A configuration change requires a provider refresh.');
+                logger.info('A configuration change requires a provider refresh.');
                 provider.refresh();
             }
         });
@@ -84,12 +82,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     */
     startRemoteMcpProxy();
 
-    console.log('MCP Tap Extension active.');
+    logger.info('MCP Tap Extension active.');
 }
 
 export function deactivate(): void {
     stopRemoteMcpProxy();
-    console.log('MCP Tap Extension deactivated.');
+    logger.info('MCP Tap Extension deactivated.');
 }
 
 /*
@@ -110,12 +108,12 @@ async function loadSecretsFromFile(context: vscode.ExtensionContext): Promise<Re
         // After storing, delete the file from the disk. 
         // The idea is that the file is only put for new secrets, loaded to secure storage and immediately deleted
         await fs.rm(secretsPath);
-        console.info('Successfully loaded updated secrets from file to secret storage');
+        logger.info('Successfully loaded updated secrets from file to secret storage');
     } catch (error: any) {
         // If the file doesn't exist, it's not an error. It just means no secrets were deployed.
         if ((error.code && error.code !== 'ENOENT')) {
             // For all other errors (e.g., permissions), log it and show an error message.
-            console.error('Failed to read or parse secrets file:', error);
+            logger.error('Failed to read or parse secrets file:', error);
         }
     }
 
@@ -159,7 +157,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
         if (!isForwarding()) {
             // Do not provide tapped MCP servers because there are no log forwarders, no reason
             // to set up tap
-            console.warn('No forwarders were loaded, extension will not tap MCP servers');
+            logger.warn('No forwarders were loaded, extension will not tap MCP servers');
             return [];
         }
 
@@ -215,13 +213,13 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
         // Update proxy config with latest
         updateProxyConfig(remoteMcpProxyConfig);
 
-        console.log(`Providing ${serverDefinitions.length} full tapped server configurations.`);
+        logger.info(`Providing ${serverDefinitions.length} full tapped server configurations.`);
         return serverDefinitions;
     }
 
     // Triggered when want to indicate the provider to update
     public refresh(): void {
-        console.log(
+        logger.info(
             'TapMcpServerDefinitionProvider refresh requested. Firing onDidChange event...'
         );
         // Fire the event. This tells VS Code to call provideMcpServerDefinitions() again.
@@ -294,7 +292,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
             0,
             server.label.lastIndexOf(TAPPED_SERVER_SUFFIX)
         );
-        console.log(`Launching MCP tap server for: ${origServerName}`);
+        logger.info(`Launching MCP tap server for: ${origServerName}`);
 
         if (server instanceof vscode.McpStdioServerDefinition) {
             // Path to our bundled tap server script
@@ -312,13 +310,12 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
             if (server.env) {
                 // Check if there are any input variables in the env
                 const envInputVars = Object.entries(server.env).filter(
-                    ([key, val]) =>
-                        typeof val === 'string' &&
-                        INPUT_VARIABLE_REGEX.test(val)
+                    ([key, val]) => typeof val === 'string' && INPUT_VARIABLE_REGEX.test(val)
                 );
                 let resolvedEnvInputVars: Record<string, string | number | null> =
                     (await this.resolveInputVariables(envInputVars, origServerName)) || {};
                 env = {
+                    [SUPPRESS_STDOUT_LOGS_ENV_VAR_NAME]: 1,
                     ...server.env,
                     ...resolvedEnvInputVars,
                 };
