@@ -16,6 +16,9 @@ and verify our underlying assumptions still hold.
 const MCP_ENCRYPTION_KEY = 'mcpEncryptionKey';
 const MCP_ENCRYPTION_KEY_ALGORITHM = 'AES-GCM';
 
+export class DecryptError extends Error { }
+export type VarRetrievalError = 'none' | 'decrypt' | 'format';
+
 /*
 This class is used to retrieve the values of input variables of MCP servers. These are namespaced in a way
 that makes them inaccessible using the vscode API's ExtensionContext.
@@ -131,7 +134,7 @@ export class InputVariableRetriever {
             const secretKey = await this.getEncryptionKey();
             if (!secretKey) {
                 logger.warn('MCP encryption key could not be retrieved. Likely need to restart VScode.');
-                return {};
+                throw new DecryptError();
             }
             
             // Decrypt
@@ -146,7 +149,7 @@ export class InputVariableRetriever {
             return JSON.parse(decodedStr);
         } catch (ex) {
             logger.error('Failed to decrypt secret inputs', ex);
-            return {};
+            throw new DecryptError();
         }
     }
     
@@ -173,7 +176,7 @@ export class InputVariableRetriever {
     }
     
     // Function to retrieve the input variables value stored on the disk in VScode's local storage
-    async getInputVariablesFromDB(): Promise<Record<string, string | number>> {
+    async getInputVariablesFromDB(allowDecryptFailure = true): Promise<Record<string, string | number>> {
         let db: Database | null = null;
         const resolvedValues: Record<string, string | number> = {};
         try {
@@ -195,7 +198,17 @@ export class InputVariableRetriever {
                 
                 // Retrieve the secret variables
                 if (mcpInputs.secrets) {
-                    const secretInputs = await this.decryptSecretInputs(mcpInputs.secrets);
+                    let secretInputs;
+                    try {
+                        secretInputs = await this.decryptSecretInputs(mcpInputs.secrets);
+                    } catch (err) {
+                        if ((err instanceof DecryptError) && (!allowDecryptFailure)) {
+                            // In this case we don't want to swallow the error
+                            throw err;
+                        } else { 
+                            secretInputs = {};
+                        }
+                    }
                     updateResolvedValues(Object.values(secretInputs));
                 }
             }
@@ -237,7 +250,14 @@ export class InputVariableRetriever {
                 // If there are none - the variable to be saved is the first - then start with an empty dict and let's create it
                 let secretInputs: any = {};
                 if (mcpData.secrets) {
-                    secretInputs = await this.decryptSecretInputs(mcpData.secrets);
+                    try {
+                        secretInputs = await this.decryptSecretInputs(mcpData.secrets);
+                    } catch (err) {
+                        if (err instanceof DecryptError) {
+                            // In case we have an issue decrypting, do not try to encrypt over it since we will lose the old secrets
+                            throw err;
+                        }
+                    }
                 }
                 
                 // Add input and encrypt
