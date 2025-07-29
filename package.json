@@ -3,7 +3,7 @@
     "displayName": "MCP Audit Extension",
     "description": "Dynamically intercepts MCP configurations to add logging via a tap server.",
     "publisher": "Agentity",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "repository": {
         "type": "git",
         "url": "https://github.com/Agentity-com/mcp-audit-extension.git"
