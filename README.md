@@ -3,7 +3,7 @@
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/agentity.mcp-audit-extension.svg)](https://marketplace.visualstudio.com/items?itemName=agentity.mcp-audit-extension)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Audit and log all GitHub Copilot tool calls in VSCode with ease and precision.**
+**Audit and log all GitHub Copilot tool calls in VSCode with ease.**
 
 ## Table of Contents
 
@@ -33,6 +33,8 @@ This extension transparently intercepts and logs all MCP tool calls, forwarding 
 *   **Developer Troubleshooting**: Provide developers with detailed logs of Copilot's tool interactions for easier debugging and a better understanding of its behavior.
 
 ## Installation
+
+> **Note:** This extension requires Visual Studio Code version 1.101 or newer.
 
 MCP Audit is built for enterprise environments and is fully manageable via MDM or other configuration management tools, using the CLI. The deployment process involves two steps: installing the extension and pushing a centralized configuration file. Deployment on individual machines using the Visual Studio Code UI is available as well.
 
