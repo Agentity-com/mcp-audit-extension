@@ -1,6 +1,5 @@
 import express, { Application, Request, Response } from 'express';
 import { Server, IncomingMessage, ClientRequest } from 'http';
-// import bodyParser from 'body-parser';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { createParser, EventSourceMessage } from 'eventsource-parser';
 import { 
@@ -48,14 +47,8 @@ let currentAuthTarget: string | undefined;
 
 export function updateProxyConfig(newConfig: Record<string, URL>): void {
     const sanitizedConfig: Record<string, URL> = {};
-    if (
-        typeof newConfig !== 'object' ||
-        newConfig === null ||
-        Array.isArray(newConfig)
-    ) {
-        logger.error(
-            'Invalid configuration. New config must be a JSON object.'
-        );
+    if (typeof newConfig !== 'object' || newConfig === null || Array.isArray(newConfig)) {
+        logger.error('Invalid configuration. New config must be a JSON object.');
         return;
     }
     for (const key in newConfig) {
@@ -65,19 +58,14 @@ export function updateProxyConfig(newConfig: Record<string, URL>): void {
             // Validate that the value is a proper URL.
             sanitizedConfig[sanitizedKey] = new URL(newConfig[key]);
         } catch (error) {
-            logger.warn(
-                `[Config] Invalid URL format for key "${key}": "${newConfig[key]}". Skipping this entry.`
-            );
+            logger.warn(`[Config] Invalid URL format for key "${key}": "${newConfig[key]}". Skipping this entry.`);
         }
     }
 
     // Atomically replace the old configuration with the new one.
     proxyConfig = sanitizedConfig;
-    logger.info(
-        'Proxy configuration updated. Active routes:',
-        Object.entries(proxyConfig).map(
-            ([key, value]) => `/${key} -> ${value.toString()}`
-        )
+    logger.info('Proxy configuration updated. Active routes:',
+        Object.entries(proxyConfig).map(([key, value]) => `/${key} -> ${value.toString()}`)
     );
 }
 
@@ -118,7 +106,7 @@ export function startRemoteMcpProxy() {
        router: () => currentAuthTarget,
        pathRewrite: (path, req: Request) => req.originalUrl, // Avoid omitting the matching part
        changeOrigin: true,
-       logger: console,
+       //logger: console, // Use this when testing
     });
     app.use('/register', authMiddleware);
     app.use('/token', authMiddleware);
@@ -152,7 +140,7 @@ export function startRemoteMcpProxy() {
                 pathFilter: (path, req: Request) => req.params.server in proxyConfig, // Return 404 if unproxied server
                 router: (req: Request) => proxyConfig[req.params.server].origin, // Dynamically target to MCP server based on server in path
                 changeOrigin: true,
-                logger: console,
+                //logger: console, // Use this when testing
                 selfHandleResponse: true, // necessary to use interceptors
                 on: {
                     proxyReq: logRequests,
@@ -211,6 +199,8 @@ export function startRemoteMcpProxy() {
                 toolCallRecords.delete(key);
 
                 fillResultData(jsonRPCMessage.result, toolCallRecord);
+                // Forward the log to all registered log forwarders
+                // Do NOT await - we want this to be async and non-blocking
                 forwardLog(toolCallRecord as LogRecord);
             } else if (jsonRPCMessage.result) {
                 // Otherwise, check if this is a tools list
@@ -236,6 +226,7 @@ export function startRemoteMcpProxy() {
                     res.write(response);
                 } catch (err) {
                     logger.error("JSON stream error:", err);
+                    res.write(buffer); // Write original buffer in case we had issue in manipulation
                 }
                 res.end();
             });

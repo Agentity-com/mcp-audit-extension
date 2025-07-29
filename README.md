@@ -16,6 +16,7 @@
 - [Configuration](#configuration)
 - [Log Data Format](#log-data-format)
 - [Limitations](#limitations)
+- [Troubleshooting](#troubleshooting)
 - [Technical FAQ](#technical-faq)
 - [License](#license)
 - [Contact](#Contact)
@@ -227,13 +228,42 @@ Here is an example of a log record for a successful call to the `terminal.runCom
 *   **Tool Call Limit**: GitHub Copilot currently limits prompts to 128 tool calls. This means a maximum of 64 audited tool calls can be processed in a single interaction.
 *   **Configuration Restart**: If you use secret input variables for your MCP configuration, a restart of VS Code may be required for the extension to mirror the configuration correctly.
 
+## Troubleshooting
+
+If you find that your MCP tool calls are not being logged, please follow these steps to diagnose the issue.
+
+### Review Limitations
+First, please review the [Limitations](#limitations) section to ensure the issue you're encountering is not related to a known constraint of the extension.
+
+### Confirm You Are Using a `(tapped)` Server
+The extension works by creating mirrored `(tapped)` versions of your MCP servers. Auditing is only active for these tapped servers. You can confirm which server is in use by looking at the server name visible in GitHub Copilot's tool call prompt. If you are not using a server with the `(tapped)` suffix, its calls will not be audited.
+
+### Check Logs for Errors or Issues
+The extension and tapped servers generate detailed logs that are essential for troubleshooting. Check these logs for any error messages, especially those related to forwarder configuration (e.g., invalid URL, incorrect token) or connectivity issues (e.g., network errors, firewall blocks).
+
+You can view live logs in the VS Code **Output** panel:
+1.  Open the Output panel (`Ctrl+Shift+U` or **View > Output**).
+2.  From the dropdown menu in the top-right of the panel, select one of the following:
+    *   **`MCP Audit Extension`**: For logs related to the extension's initialization, configuration, and forwarder status.
+    *   **`MCP Server: <Server Name> (tapped)`**: For logs specific to a tapped MCP server, including details on individual tool calls.
+
+For persistent log files on disk, check the following locations based on your operating system.
+*   **Windows**: `%APPDATA%\Code\logs\<timestamp>\window<X>\exthost\Agentity.mcp-audit-extension\MCP Audit Extension.log`
+*   **macOS**: `~/Library/Application Support/Code/logs/<timestamp>/window<X>\exthost/Agentity.mcp-audit-extension/MCP Audit Extension.log`
+*   **Linux**: `~/.config/Code/logs/<timestamp>/exthost/window<X>\Agentity.mcp-audit-extension/MCP Audit Extension.log`
+
+Replace `<timestamp>` with the relevant folder for your session (e.g., `20250729T103000`). There are multiple window folders that correlate to separate instantiations of VScode on that day. Look for errors indicating that forwarders could not be reached or were misconfigured.
+
+### Get in Touch
+If you have followed the steps above and are still unable to resolve the issue, please reach out for assistance. You can:
+
+*   **Open an Issue on GitHub**: For the most efficient support, please [open an issue](https://github.com/agentborisdanilovich/mcp-audit-extension/issues) on our GitHub repository. Include any relevant, non-sensitive snippets from your logs.
+*   **Email Support**: Alternatively, you can contact our support team at support@agentity.com.
+
 ## Technical FAQ
 
 *   **What data is sent to the Agentity cloud?**
     The Agentity cloud only collects a registration event when the extension launches for product usage statistics. The only information sent is an anonymous (hashed) agent ID and an API key provided by Agentity. No tool call data or user content is sent to Agentity.
-
-*   **My MCP tool calls are not being logged. What should I do?**
-    First, review the [Limitations](#limitations) section. Confirm that you are using the `(tapped)` MCP server and not the original (the server name is visible in GitHub Copilot's tool call prompt). If the configuration appears correc, confirm that the configured forwarders are accessible. If the logs do not indicate errors, then reach out to support@agentity.com.
 
 *   **What is the performance impact of the audit?**
     The resource footprint is minimal. Log forwarding is performed asynchronously to avoid impacting the user experience. Any delay introduced is negligible compared to the overall processing time of a GitHub Copilot prompt.

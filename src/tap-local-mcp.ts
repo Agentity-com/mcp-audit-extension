@@ -55,18 +55,14 @@ async function main() {
         const mcpServerNameForLog = rawArgs.includes('--mcp-server-name')
             ? rawArgs[rawArgs.indexOf('--mcp-server-name') + 1]
             : 'unknown-target';
-        logger.error(
-            `[${mcpServerNameForLog}] Error: The --target flag is mandatory.`
-        );
+        logger.error(`[${mcpServerNameForLog}] Error: The --target flag is mandatory.`);
         process.exit(1);
     }
 
     const argv = await argvParser.parseAsync(cliArgsToParse);
 
     if (targetCommandAndArgs.length === 0) {
-        logger.error(
-            `[${argv.mcpServerName}] Error: --target flag requires a value (URL or command).`
-        );
+        logger.error(`[${argv.mcpServerName}] Error: --target flag requires a value (URL or command).`);
         process.exit(1);
     }
 
@@ -92,27 +88,17 @@ async function main() {
                 const envConfig = dotenv.parse(await readFile(argv.envFile));
                 Object.assign(spawnEnv, envConfig);
             } catch (e: any) {
-                logger.warn(
-                    `[${originalTargetName}] Warning: Failed to parse --env-file ${argv.envFile}: ${e.message}`
-                );
+                logger.warn(`[${originalTargetName}] Warning: Failed to parse --env-file ${argv.envFile}: ${e.message}`);
             }
         } else {
-            logger.warn(
-                `[${originalTargetName}] Warning: --env-file ${argv.envFile} not found.`
-            );
+            logger.warn(`[${originalTargetName}] Warning: --env-file ${argv.envFile} not found.`);
         }
     }
 
-    logger.info(
-        `[${tappedServerName}] Initializing for target: ${originalTargetName}`
-    );
+    logger.info(`[${tappedServerName}] Initializing for target: ${originalTargetName}`);
     try {
         // 2. Create Client Transport for the actual target server
-        logger.info(
-            `[${originalTargetName}] Target is a command: ${target} ${targetArgs.join(
-                ' '
-            )}`
-        );
+        logger.info(`[${originalTargetName}] Target is a command: ${target} ${targetArgs.join(' ')}`);
         childProc = spawn(target, targetArgs, {
             env: spawnEnv,
             shell: true,
@@ -120,23 +106,15 @@ async function main() {
         });
 
         if (!childProc.stdin || !childProc.stdout || !childProc.stderr) {
-            throw new Error(
-                'Failed to get stdio streams from child process.'
-            );
+            throw new Error('Failed to get stdio streams from child process.');
         }
 
         childProc.stderr.on('data', (data) => {
-            logger.error(
-                `[${originalTargetName}] Target STDERR: ${data
-                    .toString()
-                    .trim()}`
-            );
+            logger.error(`[${originalTargetName}] Target STDERR: ${data.toString().trim()}`);
         });
 
         childProc.on('error', (err) => {
-            logger.error(
-                `[${originalTargetName}] Error with target command '${target}': ${err.message}`
-            );
+            logger.error(`[${originalTargetName}] Error with target command '${target}': ${err.message}`);
             // McpServer and proxyServer might already be running; need graceful shutdown.
             // For now, exiting, but a more robust solution might involve closing transports.
             process.exit(1);
@@ -146,10 +124,7 @@ async function main() {
             const exitCode =
                 code ?? 
                 (signal ? 128 + (osConstants.signals[signal as keyof typeof osConstants.signals] || 0) : 1);
-            logger.info(
-                `[${originalTargetName}] Target command exited with code ${exitCode} (signal: ${signal || 'unknown'
-                })`
-            );
+            logger.info(`[${originalTargetName}] Target command exited with code ${exitCode} (signal: ${signal || 'unknown'})`);
             // This will also cause the tap server to exit if proxyServer is tied to this transport.
             // Consider if tap server should exit or just log and stop proxying.
             process.exit(exitCode);
@@ -172,9 +147,7 @@ async function main() {
             name: 'Client',
             version: '1.0.0',
         });
-        const agentId = argv.agentId || (await getAgentId());
-        logger.info(`[${originalTargetName}] Using Agent ID: ${agentId}`);
-        mcpClient.init(originalTargetName, agentId);
+        mcpClient.init(originalTargetName);
         await mcpClient.connect(targetClientTransport);
 
         const targetServerCapabilities = mcpClient.getServerCapabilities()!;
@@ -196,16 +169,11 @@ async function main() {
             client: mcpClient,
             serverCapabilities: targetServerCapabilities,
         }).catch((err) => {
-            logger.error(
-                `[${tappedServerName}] Error in proxyServer: ${(err as Error).message
-                }`
-            );
+            logger.error(`[${tappedServerName}] Error in proxyServer: ${(err as Error).message}`);
             if (childProc && !childProc.killed) childProc.kill();
             process.exit(1);
         });
-        logger.info(
-            `[${tappedServerName}] proxyServer started, bridging to ${originalTargetName}.`
-        );
+        logger.info(`[${tappedServerName}] proxyServer started, bridging to ${originalTargetName}.`);
 
         // 6. Expose the McpServer via STDIO for the IDE to connect to
         // StdioServerTransport typically defaults to process.stdin/stdout
@@ -219,28 +187,20 @@ async function main() {
             if (isShuttingDown) return;
             isShuttingDown = true;
 
-            logger.info(
-                `[${tappedServerName}] Received ${signal}. Shutting down gracefully.`
-            );
+            logger.info(`[${tappedServerName}] Received ${signal}. Shutting down gracefully.`);
 
             try {
                 await mcpServer.close();
                 logger.info(`[${tappedServerName}] McpServer closed.`);
             } catch (e: any) {
-                logger.error(
-                    `[${tappedServerName}] Error closing McpServer: ${e.message}`
-                );
+                logger.error(`[${tappedServerName}] Error closing McpServer: ${e.message}`);
             }
 
             try {
                 await mcpClient.close();
-                logger.info(
-                    `[${originalTargetName}] McpClient disconnected from target.`
-                );
+                logger.info(`[${originalTargetName}] McpClient disconnected from target.`);
             } catch (e: any) {
-                logger.error(
-                    `[${originalTargetName}] Error disconnecting McpClient: ${e.message}`
-                );
+                logger.error(`[${originalTargetName}] Error disconnecting McpClient: ${e.message}`);
             }
 
             if (childProc && !childProc.killed) {
@@ -262,10 +222,7 @@ async function main() {
         process.on('SIGINT', () => shutdown('SIGINT'));
         process.on('SIGTERM', () => shutdown('SIGTERM'));
     } catch (error: any) {
-        logger.error(
-            `[${tappedServerName}] Fatal initialization error: ${error?.stack || error?.message || error
-            }`
-        );
+        logger.error(`[${tappedServerName}] Fatal initialization error: ${error?.stack || error?.message || error}`);
         if (childProc && !childProc.killed) {
             childProc.kill();
         }
@@ -278,8 +235,7 @@ main().catch((error) => {
         ? process.argv[process.argv.indexOf('--mcp-server-name') + 1]
         : 'Unknown name'; // Use tap server name if original target name parsing failed
     logger.error(
-        `[${serverNameArg}] Unhandled error during tap server execution: ${error?.stack || error?.message || error
-        }`
+        `[${serverNameArg}] Unhandled error during tap server execution: ${error?.stack || error?.message || error}`
     );
     process.exit(1);
 });

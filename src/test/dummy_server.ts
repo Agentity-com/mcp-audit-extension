@@ -2,7 +2,6 @@ import { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js';
 import { Server } from 'http';
 
 let isAuthEnabled = false;

@@ -201,6 +201,7 @@ export class InputVariableRetriever {
             }
         } catch (ex) {
             logger.error('Error attempting to resolve input variables', ex);
+            throw ex;
         } finally {
             if (db) {
                 db.close();

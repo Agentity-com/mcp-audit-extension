@@ -48,7 +48,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
         const isTapConfigAffectedPromise = new Promise<boolean>(resolve => {
             if (event.affectsConfiguration('mcpAudit')) {
-                logger.info('MCP tap configuration change detected.');
+                logger.info('Extension configuration change detected.');
                 const wasForwarding = isForwarding();
                 loadSecretsFromFile(context).then(secrets => {
                     initForwarders(getForwardersConfig(), secrets);
@@ -169,9 +169,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
 
         const serverDefinitions: vscode.McpServerDefinition[] = [];
         const remoteMcpProxyConfig: Record<string, URL> = {};
-        for (const [serverName, originalServerConfig] of Object.entries(
-            servers
-        )) {
+        for (const [serverName, originalServerConfig] of Object.entries(servers)) {
             if (!originalServerConfig) {
                 continue;
             }
@@ -192,20 +190,11 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                 );
             } else {
                 // Reroute configuration to target our local proxy
-                const proxyUrl = createProxyUrl(
-                    serverName,
-                    originalServerConfig.url
-                );
-                tapConfig = new vscode.McpHttpServerDefinition(
-                    tappedServerName,
-                    vscode.Uri.parse(proxyUrl),
-                    {}
-                );
+                const proxyUrl = createProxyUrl(serverName, originalServerConfig.url);
+                tapConfig = new vscode.McpHttpServerDefinition(tappedServerName, vscode.Uri.parse(proxyUrl), {});
 
                 // We only re-target the origin, the path will be rewritten in the proxy
-                remoteMcpProxyConfig[serverName] = new URL(
-                    new URL(originalServerConfig.url).origin
-                );
+                remoteMcpProxyConfig[serverName] = new URL(new URL(originalServerConfig.url).origin);
             }
             serverDefinitions.push(tapConfig);
         }
@@ -219,9 +208,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
 
     // Triggered when want to indicate the provider to update
     public refresh(): void {
-        logger.info(
-            'TapMcpServerDefinitionProvider refresh requested. Firing onDidChange event...'
-        );
+        logger.info('TapMcpServerDefinitionProvider refresh requested.');
         // Fire the event. This tells VS Code to call provideMcpServerDefinitions() again.
         this.didChangeEmitter.fire();
     }
@@ -237,17 +224,13 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
         if (inputVars.length > 0) {
             // If there are input variables, we need to retrieve their value set for the original server from the workspace or global storage
             const isWorkspaceServer = this._workspaceServers.includes(origServerName);
-            // const extStoragePathUri = isWorkspaceServer ? this._context.storageUri! : this._context.globalStorageUri;
-            // const dbStoragePath = vscode.Uri.joinPath(extStoragePathUri, '..', 'state.vscdb');
             const varRetriever = new InputVariableRetriever(this._context, isWorkspaceServer);
             let setInputVariables: Record<string, string | number | null>;
             try {
                 setInputVariables = await varRetriever.getInputVariablesFromDB();
             } catch (err) {
                 setInputVariables = {};
-                logger.warn(
-                    'Failed to retrieve input variables from the database. Internal storage implementation likely changed. Fix might be required'
-                );
+                logger.warn('Failed to retrieve input variables from the database. Internal storage implementation likely changed. Fix might be required');
             }
 
             for (let [key, val] of inputVars) {
