@@ -228,12 +228,13 @@ export function startRemoteMcpProxy() {
             });
             proxyRes.on('end', () => {
                 try {
-                    //res.write(buffer);
                     const dataStr = buffer.toString('utf8');
                     const jsonRPCMessage = handleResponseMessage(dataStr);
                     // Maintain original trailing newlines since clients expect it
                     const trailingNewlinesMatch = dataStr.match(/\n*$/)?.[0] ?? '';
-                    res.write(`${JSON.stringify(jsonRPCMessage)}${trailingNewlinesMatch}`);
+                    const response = `${JSON.stringify(jsonRPCMessage)}${trailingNewlinesMatch}`;
+                    res.setHeader('Content-Length', Buffer.byteLength(response, 'utf8'));
+                    res.write(response);
                 } catch (err) {
                     console.error("JSON stream error:", err);
                 }
@@ -245,6 +246,9 @@ export function startRemoteMcpProxy() {
             });
 
         } else if (contentType === 'text/event-stream') {
+            // In case the server set it, remove it. Client shuld handle text/event-stream without Content-Length correctly
+            res.removeHeader('Content-Length');
+
             const sseParser = createParser({
                 onEvent: (event: EventSourceMessage) => {
                     // Format back to SSE and write to the client

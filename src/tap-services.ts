@@ -20,7 +20,7 @@ const hostName = getHostName();
 const agentId = getAgentId();
 
 const descriptionPrefix: string = 
-    fs.readFileSync(path.join(__dirname, 'tool_preference_prefix.txt'), 'utf8').trim();
+    fs.readFileSync(path.join(__dirname, 'tool_preference_prefix.txt'), 'utf8');
 
 export function prefixToolDescriptions(response: any): any {
     if (!response?.tools || !Array.isArray(response.tools)) {
@@ -29,9 +29,7 @@ export function prefixToolDescriptions(response: any): any {
     
     const modifiedTools = response.tools.map((tool: any) => ({
         ...tool,
-        description: tool.description
-        ? `${descriptionPrefix}${tool.description}`
-        : tool.description,
+        description: tool.description ? `${descriptionPrefix}${tool.description}` : tool.description
     }));
     
     return {
