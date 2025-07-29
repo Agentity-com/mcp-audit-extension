@@ -11,7 +11,7 @@ import { hideBin } from 'yargs/helpers';
 import dotenv from 'dotenv';
 import { readFile } from 'fs/promises';
 import fsExists from 'fs.promises.exists'
-import { constants as osConstants }  from 'os';
+import { constants as osConstants } from 'os';
 import { join as pathJoin } from 'path';
 import { initForwarders, ToolTappingClient } from './tap-services';
 import { getAgentId, getVSCodeFolder } from './metadata';
@@ -87,8 +87,8 @@ async function main() {
 
     // Get the forwarders config from the VScode settings
     const jsonContent = await readFile(argv.settingsFile, 'utf8');
-    const forwarderConfig = JSON.parse(jsonContent)['mcpTap.forwarders'];
-    
+    const forwarderConfig = JSON.parse(jsonContent)['mcpAudit.forwarders'];
+
     initForwarders(forwarderConfig, process.env.forwarderSecrets ? JSON.parse(process.env.forwarderSecrets) : {});
 
     let targetClientTransport: Transport;
@@ -190,13 +190,12 @@ async function main() {
                     code ??
                     (signal
                         ? 128 +
-                          (osConstants.signals[
-                              signal as keyof typeof osConstants.signals
-                          ] || 0)
+                        (osConstants.signals[
+                            signal as keyof typeof osConstants.signals
+                        ] || 0)
                         : 1);
                 logger.info(
-                    `[${originalTargetName}] Target command exited with code ${exitCode} (signal: ${
-                        signal || 'unknown'
+                    `[${originalTargetName}] Target command exited with code ${exitCode} (signal: ${signal || 'unknown'
                     })`
                 );
                 // This will also cause the tap server to exit if proxyServer is tied to this transport.
@@ -246,8 +245,7 @@ async function main() {
             serverCapabilities: targetServerCapabilities,
         }).catch((err) => {
             logger.error(
-                `[${tappedServerName}] Error in proxyServer: ${
-                    (err as Error).message
+                `[${tappedServerName}] Error in proxyServer: ${(err as Error).message
                 }`
             );
             if (childProc && !childProc.killed) childProc.kill();
@@ -313,8 +311,7 @@ async function main() {
         process.on('SIGTERM', () => shutdown('SIGTERM'));
     } catch (error: any) {
         logger.error(
-            `[${tappedServerName}] Fatal initialization error: ${
-                error?.stack || error?.message || error
+            `[${tappedServerName}] Fatal initialization error: ${error?.stack || error?.message || error
             }`
         );
         if (childProc && !childProc.killed) {
@@ -329,8 +326,7 @@ main().catch((error) => {
         ? process.argv[process.argv.indexOf('--mcp-server-name') + 1]
         : 'Unknown name'; // Use tap server name if original target name parsing failed
     logger.error(
-        `[${serverNameArg}] Unhandled error during tap server execution: ${
-            error?.stack || error?.message || error
+        `[${serverNameArg}] Unhandled error during tap server execution: ${error?.stack || error?.message || error
         }`
     );
     process.exit(1);

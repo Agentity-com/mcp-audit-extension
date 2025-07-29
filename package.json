@@ -122,6 +122,12 @@
                                     "path": {
                                         "type": "string",
                                         "description": "The full path to the local log file."
+                                    },
+                                    "maxSize": {
+                                        "type": "string",
+                                        "description": "Optional. The maximum size of the file before it is rotated. Use a number followed by 'B', 'K', 'M', or 'G' (e.g., '10M', '1G').",
+                                        "pattern": "^\\d+[BKMG]$",
+                                        "deafult": "10M"
                                     }
                                 },
                                 "required": [
@@ -156,6 +162,7 @@
         "fs.promises.exists": "^1.1.4",
         "http-proxy-middleware": "^3.0.5",
         "mcp-proxy": "^5.4.0",
+        "rotating-file-stream": "^3.2.6",
         "sql.js": "^1.13.0",
         "syslog-pro": "^1.0.0",
         "winston": "^3.0.0",

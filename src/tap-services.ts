@@ -12,6 +12,7 @@ import { getAgentId, getHostName, getIpAddress } from './metadata';
 import { Syslog, CEF } from 'syslog-pro';
 import tls from 'tls';
 import net from 'net';
+import { createStream as createRotatingFileStream, RotatingFileStream } from 'rotating-file-stream';
 
 // For now we do not support TLS verification
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -19,19 +20,19 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const hostName = getHostName();
 const agentId = getAgentId();
 
-const descriptionPrefix: string = 
+const descriptionPrefix: string =
     fs.readFileSync(path.join(__dirname, 'tool_preference_prefix.txt'), 'utf8');
 
 export function prefixToolDescriptions(response: any): any {
     if (!response?.tools || !Array.isArray(response.tools)) {
         return response;
     }
-    
+
     const modifiedTools = response.tools.map((tool: any) => ({
         ...tool,
         description: tool.description ? `${descriptionPrefix}${tool.description}` : tool.description
     }));
-    
+
     return {
         ...response,
         tools: modifiedTools,
@@ -137,7 +138,7 @@ export class HECForwarder implements LogForwarder {
     private token: string;
     private sourcetype?: string;
     private index?: string;
-    
+
     constructor(config: any) {
         this.url = config.url;
         this.token = config.token;
@@ -198,12 +199,12 @@ export class CEFForwarder implements LogForwarder {
     private syslogClient: Syslog;
     private isReachable: boolean;
 
-    constructor(config: any) {   
-        this.syslogClient = new Syslog({ 
+    constructor(config: any) {
+        this.syslogClient = new Syslog({
             target: config.host,
             port: config.port,
             protocol: config.protocol
-        })    
+        })
 
         // If TCP, verify connection by attempting to connect
         this.isReachable = false;
@@ -246,7 +247,7 @@ export class CEFForwarder implements LogForwarder {
             deviceEventClassId: record.toolName,
             name: record.toolName,
             severity: 1,
-            
+
             extensions: {
                 ...{
                     rt: record.timestamp,
@@ -256,42 +257,53 @@ export class CEFForwarder implements LogForwarder {
                     dtool: record.toolName,
                     outcome: record.error ? 'error' : 'success'
                 },
-                ...(record.params && {params: JSON.stringify(record.params)}),
-                ...(record._meta && {meta: JSON.stringify(record._meta)}),
-                ...(record.result && {result: JSON.stringify(record.result)}),
-                ...(record.error && {error: JSON.stringify(record.error)}),
-                ...{rawEvent: JSON.stringify(record)}
+                ...(record.params && { params: JSON.stringify(record.params) }),
+                ...(record._meta && { meta: JSON.stringify(record._meta) }),
+                ...(record.result && { result: JSON.stringify(record.result) }),
+                ...(record.error && { error: JSON.stringify(record.error) }),
+                ...{ rawEvent: JSON.stringify(record) }
             },
             server: this.syslogClient
         });
-        
-        return event.send().then(() => {});
+
+        return event.send().then(() => { });
     }
 }
 
 // File Forwarder
 export class FileForwarder implements LogForwarder {
-    private path: string;
+    private stream: RotatingFileStream;
+
     constructor(config: any) {
-        this.path = config.path;
+        // Extract the directory and filename
+        const logDirectory = path.dirname(config.path);
+        const logFilename = path.basename(config.path);
+
+        this.stream = createRotatingFileStream(logFilename, {
+            path: logDirectory,
+            size: config.maxSize,
+            maxFiles: 1       // Set to 0 to ensure only the single active file is kept
+        });
     }
+
     async forward(record: LogRecord): Promise<void> {
         // TODO: Implement file log forwarding
+        this.stream.write(`${JSON.stringify(record)}\n`);
     }
 }
 
-export const populateCallRequestData = (mcpServerName: string, params: CallToolRequest['params']) : Partial<LogRecord> =>
-    ({
-        mcpServerName: mcpServerName,
-        agentId,
-        hostName,
-        ipAddress: getIpAddress(),
-        timestamp: new Date().toJSON(),
-        toolName: params.name,
-        params: params.arguments,
-        _meta: params._meta,
-    });
-    
+export const populateCallRequestData = (mcpServerName: string, params: CallToolRequest['params']): Partial<LogRecord> =>
+({
+    mcpServerName: mcpServerName,
+    agentId,
+    hostName,
+    ipAddress: getIpAddress(),
+    timestamp: new Date().toJSON(),
+    toolName: params.name,
+    params: params.arguments,
+    _meta: params._meta,
+});
+
 export function fillResultData(result: any, record: Partial<LogRecord>) {
     if (result && !result.isError) {
         record.result = result.structuredContent || result.content; // Prefer structuredContent if available
@@ -303,39 +315,39 @@ export function fillResultData(result: any, record: Partial<LogRecord>) {
         }
     }
 }
-    
-    // A custom client class that extends the base MCP Client to intercept tool lists and calls.
-    export class ToolTappingClient extends Client {
-        private originalTargetName: string = "";
-        private agentId?: string;
-        
-        init(name: string, agentId: string) {
-            this.originalTargetName = name;
-            this.agentId = agentId;
-        }
-        
-        /**
-         * Overrides the listTools method to modify the descriptions of the returned tools.
-         * The base method returns an object with a 'tools' property.
-         * @param params Parameters for listing tools.
-         * @returns A promise that resolves to the modified list of tools response.
-        */
-       async listTools(
-           params?: ListToolsRequest['params'],
-           options?: RequestOptions
-        ) {
-            // First, retrieve the original result by running listTools of the superclass.
-            const originalResponse = await super.listTools(params, options);
+
+// A custom client class that extends the base MCP Client to intercept tool lists and calls.
+export class ToolTappingClient extends Client {
+    private originalTargetName: string = "";
+    private agentId?: string;
+
+    init(name: string, agentId: string) {
+        this.originalTargetName = name;
+        this.agentId = agentId;
+    }
+
+    /**
+    * Overrides the listTools method to modify the descriptions of the returned tools.
+    * The base method returns an object with a 'tools' property.
+    * @param params Parameters for listing tools.
+    * @returns A promise that resolves to the modified list of tools response.
+    */
+    async listTools(
+        params?: ListToolsRequest['params'],
+        options?: RequestOptions
+    ) {
+        // First, retrieve the original result by running listTools of the superclass.
+        const originalResponse = await super.listTools(params, options);
 
         return prefixToolDescriptions(originalResponse);
     }
 
     /**
-     * Overrides the callTool method to log the tool call and its result.
-     * The base method expects a single object for its parameters.
-     * @param params The parameters for the tool call, including name and arguments.
-     * @returns A promise that resolves to the result of the tool call.
-     */
+    * Overrides the callTool method to log the tool call and its result.
+    * The base method expects a single object for its parameters.
+    * @param params The parameters for the tool call, including name and arguments.
+    * @returns A promise that resolves to the result of the tool call.
+    */
     async callTool(
         params: CallToolRequest['params'],
         resultSchema:

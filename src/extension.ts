@@ -25,8 +25,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     console.log(vscode.lm.tools.map(e => e.name));
 
     const getForwardersConfig = () => {
-        const config = vscode.workspace.getConfiguration('mcpTap');
-        return config.get<any[]>('forwarders', []).filter(f => f.enabled);    
+        const config = vscode.workspace.getConfiguration('mcpAudit');
+        return config.get<any[]>('forwarders', []).filter(f => f.enabled);
     }
 
     initForwarders(getForwardersConfig(), await loadSecretsFromFile(context));
@@ -49,7 +49,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         });
 
         const isTapConfigAffectedPromise = new Promise<boolean>(resolve => {
-            if (event.affectsConfiguration('mcpTap')) {
+            if (event.affectsConfiguration('mcpAudit')) {
                 console.log('MCP tap configuration change detected.');
                 const wasForwarding = isForwarding();
                 loadSecretsFromFile(context).then(secrets => {
@@ -75,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         });
     });
     context.subscriptions.push(disposable);
-    
+
     /* 
     Activate the tap HTTP proxy server directly from the extension
     I considered instead spawning a subprocess proxy in resolveMcpServerDefinition when the servers are started,
@@ -106,7 +106,7 @@ async function loadSecretsFromFile(context: vscode.ExtensionContext): Promise<Re
         const fileContent = await fs.readFile(secretsPath, 'utf-8');
         context.secrets.store(SECRET_STORAGE_KEY, fileContent);
         const parsedSecrets: Record<string, string> = JSON.parse(fileContent);
-        
+
         // After storing, delete the file from the disk. 
         // The idea is that the file is only put for new secrets, loaded to secure storage and immediately deleted
         await fs.rm(secretsPath);
@@ -135,20 +135,19 @@ async function loadSecretsFromFile(context: vscode.ExtensionContext): Promise<Re
 * 2) No risk of having too many tools
 * 3) No need to cause LLM to choose our version of hte tool
 */
-class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvider
-{
+class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvider {
     private _workspaceServers: string[] = [];
     private _globalServers: string[] = [];
     private _context: vscode.ExtensionContext;
-    
+
     constructor(private readonly context: vscode.ExtensionContext) {
         this._context = context;
     }
-    
+
     didChangeEmitter = new vscode.EventEmitter<void>();
     onDidChangeMcpServerDefinitions: vscode.Event<void> =
-    this.didChangeEmitter.event;
-    
+        this.didChangeEmitter.event;
+
     /**
     * Called by VS Code to discover all available servers.
     * This method now reads the entire configuration and returns a FULL tap configuration
@@ -157,8 +156,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
     async provideMcpServerDefinitions(
         _token: vscode.CancellationToken
     ): Promise<vscode.McpServerDefinition[]> {
-        if (!isForwarding())
-        {
+        if (!isForwarding()) {
             // Do not provide tapped MCP servers because there are no log forwarders, no reason
             // to set up tap
             console.warn('No forwarders were loaded, extension will not tap MCP servers');
@@ -168,9 +166,9 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
         const config = vscode.workspace.getConfiguration('mcp').inspect<{ [id: string]: any }>('servers');
         this._workspaceServers = Object.keys(config?.workspaceValue || {});
         this._globalServers = Object.keys(config?.globalValue || {});
-        
+
         const servers = { ...config?.workspaceValue, ...config?.globalValue };
-        
+
         const serverDefinitions: vscode.McpServerDefinition[] = [];
         const remoteMcpProxyConfig: Record<string, URL> = {};
         for (const [serverName, originalServerConfig] of Object.entries(
@@ -179,13 +177,13 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
             if (!originalServerConfig) {
                 continue;
             }
-            
+
             const tappedServerName = serverName + TAPPED_SERVER_SUFFIX;
-            
+
             // Dynamically choose the tap configuration type based on the original config.
             const isStdio: boolean =
-            originalServerConfig.type === 'stdio' ||
-            (!originalServerConfig.type && !originalServerConfig.url);
+                originalServerConfig.type === 'stdio' ||
+                (!originalServerConfig.type && !originalServerConfig.url);
             let tapConfig: vscode.McpServerDefinition;
             if (isStdio) {
                 tapConfig = new vscode.McpStdioServerDefinition(
@@ -205,7 +203,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                     vscode.Uri.parse(proxyUrl),
                     {}
                 );
-                
+
                 // We only re-target the origin, the path will be rewritten in the proxy
                 remoteMcpProxyConfig[serverName] = new URL(
                     new URL(originalServerConfig.url).origin
@@ -213,14 +211,14 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
             }
             serverDefinitions.push(tapConfig);
         }
-        
+
         // Update proxy config with latest
         updateProxyConfig(remoteMcpProxyConfig);
-        
+
         console.log(`Providing ${serverDefinitions.length} full tapped server configurations.`);
         return serverDefinitions;
     }
-    
+
     // Triggered when want to indicate the provider to update
     public refresh(): void {
         console.log(
@@ -229,7 +227,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
         // Fire the event. This tells VS Code to call provideMcpServerDefinitions() again.
         this.didChangeEmitter.fire();
     }
-    
+
     /*
     Retrieve the values set for the input variables of the original MCP servers. If a value is not set then ask the user for input.
     There are currently no means to retrieve those variables via the vscode extension API so we use InputVariableRetriever to look into the internal state DB
@@ -253,7 +251,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                     'Failed to retrieve input variables from the database. Internal storage implementation likely changed. Fix might be required'
                 );
             }
-            
+
             for (let [key, val] of inputVars) {
                 const varName = INPUT_VARIABLE_REGEX.exec(val as string)![1]; // We know there is a match because we tested earlier
                 if (varName in setInputVariables) {
@@ -264,13 +262,13 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                     // First need to get informaton about expected input variable
                     const config = vscode.workspace.getConfiguration('mcp').inspect<any[]>('inputs')!;
                     const input = (isWorkspaceServer ? config.workspaceValue : config.globalValue)!.find((i) => i.id == varName);
-                    
+
                     // Show input box
                     const inputVal: string | undefined = await vscode.window.showInputBox({ prompt: input.description, password: input.password });
                     // If input was provided, then save it in the DB for the ORIGINAL server. It would make both that and the tapped server work
                     if (inputVal) {
                         await varRetriever.saveInputVariableInDb(input, inputVal);
-                        
+
                         // Finally add this to the resolved variables
                         resolvedVars[key] = inputVal;
                     } else {
@@ -280,10 +278,10 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                 }
             }
         }
-        
+
         return resolvedVars;
     }
-    
+
     /**
     * Called by VS Code when it needs the full details to launch a server.
     * This is where we define the stdio process for our tap server.
@@ -297,7 +295,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
             server.label.lastIndexOf(TAPPED_SERVER_SUFFIX)
         );
         console.log(`Launching MCP tap server for: ${origServerName}`);
-        
+
         if (server instanceof vscode.McpStdioServerDefinition) {
             // Path to our bundled tap server script
             const relativeScriptPath = path.join(
@@ -305,10 +303,10 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                 'tap-local-mcp.js'
             );
             const tapScriptPath = this._context.asAbsolutePath(relativeScriptPath);
-            
+
             // This is the new, in-memory configuration that VS Code will use.
             const tapArgs: string[] = [tapScriptPath];
-            
+
             // Add environment variables if the original server has env options
             let env: Record<string, string | number | null> = {};
             if (server.env) {
@@ -316,10 +314,10 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                 const envInputVars = Object.entries(server.env).filter(
                     ([key, val]) =>
                         typeof val === 'string' &&
-                    INPUT_VARIABLE_REGEX.test(val)
+                        INPUT_VARIABLE_REGEX.test(val)
                 );
                 let resolvedEnvInputVars: Record<string, string | number | null> =
-                                (await this.resolveInputVariables(envInputVars, origServerName)) || {};
+                    (await this.resolveInputVariables(envInputVars, origServerName)) || {};
                 env = {
                     ...server.env,
                     ...resolvedEnvInputVars,
@@ -329,18 +327,18 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
             if (secretsJson) {
                 Object.assign(env, { 'forwarderSecrets': secretsJson });
             }
-            
+
             tapArgs.push('--mcp-server-name', origServerName);
-            
+
             tapArgs.push('--agent-id', await getAgentId());
-            
+
             // Add the --target flag, followed by the target itself and its arguments
             tapArgs.push('--target');
             tapArgs.push(server.command);
             if (server.args) {
                 tapArgs.push(...server.args);
             }
-            
+
             return new vscode.McpStdioServerDefinition(
                 server.label, // Use the original server's label for the tap definition
                 'node', // Command to run the tap script (Node.js)

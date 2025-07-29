@@ -24,6 +24,7 @@ import {
     LogRecord,
     resetLogForwarders,
     initForwarders,
+    isForwarding,
 } from '../tap-services';
 import * as dgram from 'dgram';
 import { getHostName, getIpAddress } from '../metadata';
@@ -33,6 +34,7 @@ import tls from 'tls';
 import selfsigned from 'selfsigned';
 import http from 'http';
 import https from 'https';
+import mockFs from 'mock-fs';
 
 chai.use(chaiAsPromised);
 chai.use(chaiSubset);
@@ -49,7 +51,7 @@ describe('Tap Integration Test', () => {
     let syslogServer: dgram.Socket;
     let forwarderConfig: object;
     let proxyUrl: URL;
-    
+
     const setProxyMcp = (mcpName: string, mcpUrl: string) => {
         const proxyUrl = new URL(
             new URL(createProxyUrl(mcpName, mcpUrl)).origin
@@ -57,20 +59,20 @@ describe('Tap Integration Test', () => {
         updateProxyConfig({ [mcpName]: new URL(new URL(mcpUrl).origin) });
         return proxyUrl;
     };
-    
+
     before(() => {
         // Setup a test syslog forwarder that we can use to check calls were tapped
         resetLogForwarders();
-        
+
         syslogServer = dgram.createSocket('udp4');
-        
+
         syslogServer.on('message', (msg: Buffer, rinfo: dgram.RemoteInfo) => {
             const messageStr = msg.toString();
             tapMessages.push(JSON.parse(messageStr.slice(messageStr.indexOf("rawEvent=") + 9)));
         });
         syslogServer.bind(5514, '127.0.0.1');
-        
-        forwarderConfig = { 
+
+        forwarderConfig = {
             type: "CEF",
             name: 'Test UDP',
             enabled: true,
@@ -79,44 +81,44 @@ describe('Tap Integration Test', () => {
             protocol: 'udp'
         };
     });
-    
+
     beforeEach(() => {
         tapMessages = [];
     });
-    
+
     after(() => {
         syslogServer.close();
     });
-    
+
     async function testToolDescriptionPrefix(
         client: Client<
-        {
-            method: string;
-            params?:
-            | {
-                [x: string]: unknown;
-                _meta?:
+            {
+                method: string;
+                params?:
                 | {
                     [x: string]: unknown;
-                    progressToken?: string | number | undefined;
+                    _meta?:
+                    | {
+                        [x: string]: unknown;
+                        progressToken?: string | number | undefined;
+                    }
+                    | undefined;
                 }
                 | undefined;
-            }
-            | undefined;
-        },
-        {
-            method: string;
-            params?:
-            | {
+            },
+            {
+                method: string;
+                params?:
+                | {
+                    [x: string]: unknown;
+                    _meta?: { [x: string]: unknown } | undefined;
+                }
+                | undefined;
+            },
+            {
                 [x: string]: unknown;
                 _meta?: { [x: string]: unknown } | undefined;
             }
-            | undefined;
-        },
-        {
-            [x: string]: unknown;
-            _meta?: { [x: string]: unknown } | undefined;
-        }
         >
     ) {
         const prefixPath = path.join(
@@ -125,49 +127,49 @@ describe('Tap Integration Test', () => {
             'tool_preference_prefix.txt'
         );
         const toolPrefix = fs.readFileSync(prefixPath, 'utf-8').trim();
-        
+
         const result = await client.listTools();
         expect(result.tools).to.be.an('array').with.length.greaterThan(0);
         for (const tool of result.tools) {
             expect(tool.description?.startsWith(toolPrefix)).to.be.true;
         }
     }
-    
+
     async function testToolLogForwarding(
         client: Client<
-        {
-            method: string;
-            params?:
-            | {
-                [x: string]: unknown;
-                _meta?:
+            {
+                method: string;
+                params?:
                 | {
                     [x: string]: unknown;
-                    progressToken?: string | number | undefined;
+                    _meta?:
+                    | {
+                        [x: string]: unknown;
+                        progressToken?: string | number | undefined;
+                    }
+                    | undefined;
                 }
                 | undefined;
-            }
-            | undefined;
-        },
-        {
-            method: string;
-            params?:
-            | {
+            },
+            {
+                method: string;
+                params?:
+                | {
+                    [x: string]: unknown;
+                    _meta?: { [x: string]: unknown } | undefined;
+                }
+                | undefined;
+            },
+            {
                 [x: string]: unknown;
                 _meta?: { [x: string]: unknown } | undefined;
             }
-            | undefined;
-        },
-        {
-            [x: string]: unknown;
-            _meta?: { [x: string]: unknown } | undefined;
-        }
         >,
         forwarderConfig: any,
         secrets: Record<string, string> = {}
     ) {
         initForwarders([forwarderConfig], secrets);
-        
+
         // Test the echo tool
         const echoResult = await client.callTool({
             name: 'echo',
@@ -188,13 +190,13 @@ describe('Tap Integration Test', () => {
             }]
         }]);
     }
-    
+
     describe('Remote MCP Servers Tap', () => {
-        
+
         before(() => {
             startRemoteMcpProxy();
         });
-        
+
         beforeEach(async () => {
             // Create a FastMCP client to connect to the tap process
             client = new Client({
@@ -202,7 +204,7 @@ describe('Tap Integration Test', () => {
                 version: '1.0.0',
             });
         });
-        
+
         afterEach(async () => {
             await dummy_server.stopRemote();
             try {
@@ -211,11 +213,11 @@ describe('Tap Integration Test', () => {
                 console.warn('Couldn\'t close client');
             }
         });
-        
+
         after(() => {
             stopRemoteMcpProxy();
         });
-        
+
         describe('Auth and proxy tests', async () => {
             it('Should connect to remote server without authentication through proxy', async () => {
                 await dummy_server.startRemote(false);
@@ -225,14 +227,14 @@ describe('Tap Integration Test', () => {
                 );
                 await client.connect(transport);
             });
-            
+
             it('Should return error when trying to connect to an unproxied server', async () => {
                 await dummy_server.startRemote();
                 const proxyUrl = setProxyMcp('dummy_server', 'http://127.0.0.1:8080');
                 const transport = new StreamableHTTPClientTransport(new URL('http://127.0.0.1:12358/not_declared/mcp'));
                 await client.connect(transport).should.be.rejected;
             });
-            
+
             // Commented out until https://github.com/punkpeye/mcp-proxy/issues/28 is resolved
             // The purpose is to check that the remote MCP proxy dynamically creates PRM and redirects to the OAuth endpoint
             // While it's not a full integration test, I think it is important to have something to verify the complex dynamic flow
@@ -240,22 +242,22 @@ describe('Tap Integration Test', () => {
             it('Should connect to remote server with authentication through proxy', async () => {
                 // Spy storage
                 let calledWithUrl: string | undefined = undefined;
-                
+
                 const dummyClientMetadata: OAuthClientMetadata = { client_name: 'test-client', redirect_uris: [] };
                 const dummyClientInformation: OAuthClientInformation = { client_id: 'test-client' };
-                
+
                 // Minimal mock provider
                 const provider: OAuthClientProvider = {
                     get redirectUrl() { return 'http://127.0.0.1/callback'; },
                     get clientMetadata() { return dummyClientMetadata; },
                     clientInformation() { return dummyClientInformation; },
                     tokens() { return undefined; },
-                    saveTokens(tokens: OAuthTokens) {},
+                    saveTokens(tokens: OAuthTokens) { },
                     redirectToAuthorization(url: URL) { calledWithUrl = url.toString(); },
-                    saveCodeVerifier(codeVerifier: string) {},
+                    saveCodeVerifier(codeVerifier: string) { },
                     codeVerifier() { return 'dummy-code-verifier'; }
                 };
-                
+
                 await dummy_server.startRemote(true);
                 const proxyUrl = setProxyMcp('dummy_server', 'http://127.0.0.1:8080');
                 const transport = new StreamableHTTPClientTransport(new URL('http://127.0.0.1:12358/dummy_server/mcp'), { authProvider: provider });
@@ -263,42 +265,42 @@ describe('Tap Integration Test', () => {
                 expect(calledWithUrl).to.contain('http://127.0.0.1:8080/oauth/authorize');
             });
         });
-    
+
         describe('Streamable HTTP', async () => {
             let transport: StreamableHTTPClientTransport;
-            
+
             beforeEach(async () => {
                 const proxyUrl = setProxyMcp('dummy_server', 'http://127.0.0.1:8080');
                 transport = new StreamableHTTPClientTransport(new URL('http://127.0.0.1:12358/dummy_server/mcp'));
             });
-            
+
             describe('text/event-stream responses', async () => {
-                beforeEach(async() => {
+                beforeEach(async () => {
                     await dummy_server.startRemote(false, false);
                     await client.connect(transport);
                 });
-                
+
                 it('Should return tools with descriptions starting with the correct prefix', async () => {
                     await testToolDescriptionPrefix(client);
                 });
             })
-            
+
             describe('application/json responses', async () => {
-                beforeEach(async() => {
+                beforeEach(async () => {
                     await dummy_server.startRemote(false, true);
                     await client.connect(transport);
                 });
-                
+
                 it('Should return tools with descriptions starting with the correct prefix', async () => {
                     await testToolDescriptionPrefix(client);
                 });
-                
+
                 it('Should echo a value and forward the log', async () => {
                     await testToolLogForwarding(client, forwarderConfig);
                 })
             })
         });
-        
+
         describe('SSE', async () => {
             beforeEach(async () => {
                 await dummy_server.startRemote();
@@ -311,7 +313,7 @@ describe('Tap Integration Test', () => {
                 );
                 await client.connect(transport);
             });
-            
+
             it('Should return tools with descriptions starting with the correct prefix', async () => {
                 await testToolDescriptionPrefix(client);
             });
@@ -320,19 +322,19 @@ describe('Tap Integration Test', () => {
 
     describe('Local MCP Servers Tap', () => {
         // These tests spin up a single local tap proxy server and tests its functionality
-        
+
         before(async () => {
             const tapMcpPath = path.join(__dirname, '..', 'tap-local-mcp.ts');
             const dummyServerPath = path.join(__dirname, 'dummy_server.ts');
-            
+
             const tmpSettingsFile = tmp.fileSync();
             const settings = {
-                'mcpTap.forwarders': [
+                'mcpAudit.forwarders': [
                     forwarderConfig
                 ]
             };
             fs.writeFileSync(tmpSettingsFile.name, JSON.stringify(settings));
-            
+
             const transport = new StdioClientTransport({
                 command: 'ts-node',
                 args: [
@@ -358,42 +360,42 @@ describe('Tap Integration Test', () => {
                     )}${path.delimiter}${process.env.PATH}`,
                 },
             });
-            
+
             // Create a FastMCP client to connect to the tap process
             client = new Client({
                 name: 'Dummy Client',
                 version: '1.0.0',
             });
-            
+
             await client.connect(transport);
         });
-        
+
         after(async () => {
             await client.close();
         });
-        
+
         it('Should return tools with descriptions starting with the correct prefix', async () => {
             // Read the prefix from the file
             await testToolDescriptionPrefix(client);
         });
-        
+
         it('Should echo a value and forward the log', async () => {
             await testToolLogForwarding(client, forwarderConfig);
         });
-        
+
         it('Should return the correct environment variable', async () => {
             // Test the env tool
             const envResult = await client.callTool({ name: 'env' });
             const envVars = JSON.parse((envResult.content as any[])[0].text);
             expect(envVars).to.have.property('DUMMY_ENV', 'dummy value');
         });
-        
+
         // TODO: Add a test to confirm the logs are forwarded correctly
     });
 
     describe('Forwarders', () => {
         let transport: StreamableHTTPClientTransport;
-        
+
         before(async () => {
             startRemoteMcpProxy();
             await dummy_server.startRemote();
@@ -402,37 +404,37 @@ describe('Tap Integration Test', () => {
             client = new Client({ name: 'Dummy Client', version: '1.0.0' });
             await client.connect(transport);
         });
-        
+
         beforeEach(() => {
             resetLogForwarders();
             tapMessages = [];
         });
-        
-        after(async() => {
+
+        after(async () => {
             await dummy_server.stopRemote();
             await client.close();
             stopRemoteMcpProxy();
         });
-        
+
         describe('CEF Forwarder', () => {
             let server: dgram.Socket | net.Server;
-            
-            afterEach(async () => { 
+
+            afterEach(async () => {
                 if (server) {
                     server.close();
                 }
             });
-            
+
             it('UDP', async () => {
                 server = dgram.createSocket('udp4');
-                
+
                 server.on('message', (msg: Buffer, rinfo: dgram.RemoteInfo) => {
                     const messageStr = msg.toString();
                     tapMessages.push(JSON.parse(messageStr.slice(messageStr.indexOf("rawEvent=") + 9)));
                 });
                 server.bind(6514, '127.0.0.1');
-                
-                const config = { 
+
+                const config = {
                     type: "CEF",
                     name: 'Test UDP',
                     enabled: true,
@@ -442,7 +444,7 @@ describe('Tap Integration Test', () => {
                 };
                 await testToolLogForwarding(client, config);
             });
-            
+
             it('TCP', async () => {
                 server = net.createServer((socket: any) => {
                     socket.on('data', (data: Buffer) => {
@@ -464,13 +466,13 @@ describe('Tap Integration Test', () => {
                 await new Promise(resolve => setTimeout(resolve, 500)); // Wait to confirm server is listening
                 await testToolLogForwarding(client, config);
             });
-            
+
             it('TLS', async () => {
                 // Generate self-signed cert
                 const attrs = [{ name: 'commonName', value: 'localhost' }];
                 const serverPems = selfsigned.generate(attrs, { days: 365 });
                 const options = { key: serverPems.private, cert: serverPems.cert };
-                
+
                 server = tls.createServer(options, (socket: any) => {
                     socket.on('data', (data: Buffer) => {
                         const messageStr = data.toString();
@@ -492,17 +494,17 @@ describe('Tap Integration Test', () => {
                 await testToolLogForwarding(client, config);
             });
         });
-        
+
         describe('HEC Forwarder', () => {
             let server: http.Server | https.Server;
             const hecToken = 'TOKEN123';
 
-            afterEach(async () => { 
+            afterEach(async () => {
                 if (server) {
                     server.close();
                 }
             });
-            
+
             const requestListener = (req: http.IncomingMessage, res: http.ServerResponse) => {
                 if (req.method !== 'POST' || req.url !== '/services/collector') {
                     res.writeHead(404).end();
@@ -512,7 +514,7 @@ describe('Tap Integration Test', () => {
                     res.writeHead(401).end(JSON.stringify({ text: 'Invalid token', code: 4 }));
                     return;
                 }
-                
+
                 let body = '';
                 req.on('data', (chunk) => body += chunk);
                 req.on('end', () => {
@@ -530,7 +532,7 @@ describe('Tap Integration Test', () => {
                     }
                 });
             };
-            
+
             it('HTTP', async () => {
                 server = http.createServer(requestListener);
                 server.listen(8000, '127.0.0.1');
@@ -547,7 +549,7 @@ describe('Tap Integration Test', () => {
                 await new Promise(resolve => setTimeout(resolve, 500)); // Wait to confirm server is listening
                 await testToolLogForwarding(client, config, { 'TOKENKEY': hecToken });
             });
-            
+
             it('HTTPS', async () => {
                 const attrs = [{ name: 'commonName', value: 'localhost' }];
                 const pems = selfsigned.generate(attrs, { days: 1 });
@@ -565,7 +567,43 @@ describe('Tap Integration Test', () => {
                     tokenSecretKey: 'TOKENKEY'
                 };
                 await new Promise(resolve => setTimeout(resolve, 500)); // Wait to confirm server is listening
-                await testToolLogForwarding(client, config, { 'TOKENKEY': hecToken });                
+                await testToolLogForwarding(client, config, { 'TOKENKEY': hecToken });
+            });
+        });
+
+        describe('File Forwarder', () => {
+            before(() => {
+                mockFs({
+                    [path.join(path.parse(process.cwd()).root, 'logdir')]: {} // Emtpy folder
+                })
+            })
+
+            after(() => {
+                mockFs.restore();
+            })
+
+            it('Log events to file', async () => {
+                const logFilePath = path.join(path.parse(process.cwd()).root, 'logdir', 'logfile');
+                const config = {
+                    type: 'FILE',
+                    name: 'File forwrader',
+                    enabled: true,
+                    path: logFilePath,
+                    maxSize: '10M'
+                }
+                initForwarders([config]);
+
+                const echoResult = await client.callTool({
+                    name: 'echo',
+                    arguments: { s: 'test' },
+                });
+
+                const logContent = fs.readFileSync(logFilePath, 'utf-8');
+                expect(logContent).to.not.be.empty;
+                const parsedLog = JSON.parse(logContent);
+                expect(parsedLog.toolName).to.equal('echo');
+                expect(parsedLog.params).to.deep.equal({ s: 'test' });
+                expect(parsedLog.result).to.deep.equal(echoResult.content);
             });
         });
     });
