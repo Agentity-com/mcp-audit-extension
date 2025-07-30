@@ -9,7 +9,7 @@
         "url": "https://github.com/Agentity-com/mcp-audit-extension.git"
     },
     "engines": {
-        "vscode": "^1.85.0"
+        "vscode": "^1.101.0"
     },
     "activationEvents": [
         "onStartupFinished"
