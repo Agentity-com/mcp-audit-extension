@@ -1,7 +1,7 @@
 {
     "name": "mcp-audit-extension",
     "displayName": "MCP Audit Extension",
-    "description": "Dynamically intercepts MCP configurations to add logging via a tap server.",
+    "description": "Audit and log all GitHub Copilot MCP tool calls in VSCode with ease.",
     "publisher": "Agentity",
     "version": "1.0.2",
     "repository": {

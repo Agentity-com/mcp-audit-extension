@@ -3,7 +3,7 @@
 [![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/agentity.mcp-audit-extension.svg)](https://marketplace.visualstudio.com/items?itemName=agentity.mcp-audit-extension)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Audit and log all GitHub Copilot tool calls in VSCode with ease.**
+**Audit and log all GitHub Copilot MCP tool calls in VSCode with ease.**
 
 ## Table of Contents
 
