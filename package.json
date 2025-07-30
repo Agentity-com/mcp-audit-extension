@@ -1,6 +1,6 @@
 {
     "name": "mcp-audit-extension",
-    "displayName": "MCP Audit Extension",
+    "displayName": "MCP Audit",
     "description": "Audit and log all GitHub Copilot MCP tool calls in VSCode with ease.",
     "publisher": "Agentity",
     "version": "1.0.3",
