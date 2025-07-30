@@ -3,7 +3,7 @@
     "displayName": "MCP Audit",
     "description": "Audit and log all GitHub Copilot MCP tool calls in VSCode with ease.",
     "publisher": "Agentity",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "preview": true,
     "icon": "logo.png",
     "license": "SEE LICENSE IN LICENSE",
