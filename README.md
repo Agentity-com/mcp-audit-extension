@@ -17,7 +17,7 @@
 - [Log Data Format](#log-data-format)
 - [Limitations](#limitations)
 - [Troubleshooting](#troubleshooting)
-- [Technical FAQ](#technical-faq)
+- [FAQ](#faq)
 - [License](#license)
 - [Contact](#Contact)
 
@@ -260,7 +260,7 @@ If you have followed the steps above and are still unable to resolve the issue, 
 *   **Open an Issue on GitHub**: For the most efficient support, please [open an issue](https://github.com/agentborisdanilovich/mcp-audit-extension/issues) on our GitHub repository. Include any relevant, non-sensitive snippets from your logs.
 *   **Email Support**: Alternatively, you can contact our support team at support@agentity.com.
 
-## Technical FAQ
+## FAQ
 
 *   **What data is sent to the Agentity cloud?**
     The Agentity cloud only collects a registration event when the extension launches for product usage statistics. The only information sent is an anonymous (hashed) agent ID and an API key provided by Agentity. No tool call data or user content is sent to Agentity.
@@ -272,7 +272,7 @@ If you have followed the steps above and are still unable to resolve the issue, 
     By default, VS Code automatically updates extensions from the marketplace. We recommend leaving this setting enabled to ensure you receive the latest features and fixes.
 
 *   **How can I submit a feature request?**
-    We welcome your feedback! Please send your ideas and feature requests to our support team.
+    We welcome your feedback! Please send your ideas and feature requests to support@agentity.com, or open an issue on GitHub.
 
 ## License
  
