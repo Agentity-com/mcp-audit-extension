@@ -202,4 +202,15 @@ describe('InputVariableRetriever Test Suite', () => {
             'global_secret_var2': 'secret2'
         });
     })
+
+    it('Errors decrypting secrets are handled correctly', async() => {
+        context.secrets.get = async (key) => "wrong_key";
+        const retriever = new InputVariableRetriever(context, true);
+        await retriever.getInputVariablesFromDB(false).should.be.rejected;
+        // If decryption is allowed to fail then only non-secret inputs will be retreived
+        const vars = await retriever.getInputVariablesFromDB(true);
+        expect(vars).to.deep.equal({
+            'workspace_var1': 'var1'
+        });
+    });
 });
