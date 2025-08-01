@@ -258,7 +258,7 @@ export class FileForwarder implements LogForwarder {
         
         this.stream = createRotatingFileStream(logFilename, {
             path: logDirectory,
-            size: config.maxSize,
+            size: config.maxSize || '10M',
             maxFiles: 1       // Set to 0 to ensure only the single active file is kept
         });
     }

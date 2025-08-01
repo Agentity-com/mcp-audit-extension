@@ -221,7 +221,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                         const config = vscode.workspace.getConfiguration('mcp').inspect<any[]>('inputs')!;
                         const secretInput = envInputVars.find(([key, val]) => {
                             const varName = INPUT_VARIABLE_REGEX.exec(val as string)![1]; // We know there is a match because we tested earlier
-                            const input = (isWorkspaceServer ? config.workspaceValue : config.globalValue)!.find((i) => i.id == varName);
+                            const input = (isWorkspaceServer ? config.workspaceValue : config.globalValue)?.find((i) => i.id == varName);
                             return input?.password;
                         });
                         if (secretInput) {
