@@ -8,7 +8,7 @@ import {
     createProxyUrl,
     stopRemoteMcpProxy,
 } from './tap-remote-mcp';
-import { initForwarders, isForwarding } from './tap-services';
+import { initForwarding, isForwarding } from './tap-services';
 import { DecryptError, InputVariableRetriever, VarRetrievalError } from './vscode_internal';
 import { logger, SUPPRESS_STDOUT_LOGS_ENV_VAR_NAME } from './logger';
 
@@ -27,7 +27,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return config.get<any[]>('forwarders', []).filter(f => f.enabled);
     }
     
-    initForwarders(getForwardersConfig(), await loadSecretsFromFile(context));
+    initForwarding(getForwardersConfig(), await loadSecretsFromFile(context));
     
     const provider = new TapMcpServerDefinitionProvider(context);
     let disposable = vscode.lm.registerMcpServerDefinitionProvider(
@@ -51,7 +51,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 logger.info('Extension configuration change detected.');
                 const wasForwarding = isForwarding();
                 loadSecretsFromFile(context).then(secrets => {
-                    initForwarders(getForwardersConfig(), secrets);
+                    initForwarding(getForwardersConfig(), secrets);
                     const isForwardingNow = isForwarding();
                     if (!wasForwarding && isForwardingNow) {
                         logger.info('Forwarding was disabled and is now enabled, which requires a refresh.');

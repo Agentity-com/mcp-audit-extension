@@ -23,7 +23,7 @@ import * as dummy_server from './dummy_server';
 import {
     LogRecord,
     resetLogForwarders,
-    initForwarders,
+    initForwarding,
     isForwarding,
 } from '../tap-services';
 import * as dgram from 'dgram';
@@ -42,6 +42,8 @@ const expect = chai.expect;
 chai.should();
 
 tmp.setGracefulCleanup();
+
+const API_KEY = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJteS1hdXRoLXNlcnZpY2UiLCJzdWIiOiJ1c2VyLWlkLTEyMyIsImF1ZCI6Im15LWFwaSIsImlhdCI6MTc1NTAyMTE4MSwiZXhwIjoxNzU3NjEzMTgxfQ.lg1J7xo_314_7-R7NJ-QVbRRlY_rVstNCKsEbKmO27uLYDrJT16b2kOHRPBKcCFkIbgpIk0-HWUloEg9mzAACHeFVgV_9U5ym8tlKdSD9AHtdu6F7-upQOYM8JAYQlHOA1N3P5BCa0O_M5pf-XXP3SKNru2vhsqoodurkp3NoZ9y5NAP9x3xpOnWKScGqSs9WR_gMTj-DEaNRiXIvNhlgy4fLPCAyHlo9kva0CbY3D99gfdoCsxo4N2RLRdaG_uGLuTZChTAioV32uBCkegRAlO3C_qXmGivmiSW48qJhAP-Yj1NYn16tQ_bELX6D59mDGx9GR4HKAVrnMBDhFxOLA';
 
 // TODO: This test file grew to suck, in particulal all the after and before. Learn Mocha fixtures better and refactor. Use AI.
 
@@ -166,9 +168,13 @@ describe('Tap Integration Test', () => {
             }
         >,
         forwarderConfig: any,
-        secrets: Record<string, string> = {}
+        secrets: Record<string, string> = {},
+        hasApiKey: boolean = true,
     ) {
-        initForwarders([forwarderConfig], secrets);
+        if (hasApiKey) {
+            secrets = { ...secrets, API_KEY };
+        }
+        initForwarding([forwarderConfig], secrets);
 
         // Test the echo tool
         const echoResult = await client.callTool({
@@ -177,17 +183,18 @@ describe('Tap Integration Test', () => {
         });
         expect((echoResult.content as any[])[0].text).to.equal('test');
         await new Promise(resolve => setTimeout(resolve, 500));
-        expect(tapMessages).to.containSubset([{
+        const resultBase = {
             toolName: 'echo',
             mcpServerName: 'dummy_server',
             ipAddress: getIpAddress(),
             hostName: getHostName(),
             params: {
                 s: 'test'
-            },
-            result: [{
-                text: 'test'
-            }]
+            }
+        };
+        expect(tapMessages).to.containSubset([{
+            ...resultBase,
+            result: hasApiKey ? [{ text: 'test' }] : 'Get an API key on audit.agentity.com' 
         }]);
     }
 
@@ -298,6 +305,10 @@ describe('Tap Integration Test', () => {
                 it('Should echo a value and forward the log', async () => {
                     await testToolLogForwarding(client, forwarderConfig);
                 })
+
+                it('Should not log results if no API key', async() => {
+                    await testToolLogForwarding(client, forwarderConfig, {}, false);
+                });
             })
         });
 
@@ -323,7 +334,7 @@ describe('Tap Integration Test', () => {
     describe('Local MCP Servers Tap', () => {
         // These tests spin up a single local tap proxy server and tests its functionality
 
-        before(async () => {
+        function createTransport(hasApiKey: boolean = true) {
             const tapMcpPath = path.join(__dirname, '..', 'tap-local-mcp.ts');
             const dummyServerPath = path.join(__dirname, 'dummy_server.ts');
 
@@ -358,8 +369,16 @@ describe('Tap Integration Test', () => {
                         'node_modules',
                         '.bin'
                     )}${path.delimiter}${process.env.PATH}`,
+                    forwarderSecrets: hasApiKey 
+                                ? `{"API_KEY":"${API_KEY}"}`
+                                : ''
                 },
             });
+            return transport;
+        }
+
+        before(async () => {
+            const transport = createTransport(true);
 
             // Create a FastMCP client to connect to the tap process
             client = new Client({
@@ -390,7 +409,20 @@ describe('Tap Integration Test', () => {
             expect(envVars).to.have.property('DUMMY_ENV', 'dummy value');
         });
 
-        // TODO: Add a test to confirm the logs are forwarded correctly
+        it('Should not log results if no API key', async() => {
+            const transport = createTransport(false);
+
+            // Create a FastMCP client to connect to the tap process
+            const clientWithoutApiKey = new Client({
+                name: 'Dummy Client',
+                version: '1.0.0',
+            });
+
+            await clientWithoutApiKey.connect(transport);
+            await testToolLogForwarding(clientWithoutApiKey, forwarderConfig, {}, false);
+
+            clientWithoutApiKey.close();
+        });
     });
 
     describe('Forwarders', () => {
@@ -573,8 +605,11 @@ describe('Tap Integration Test', () => {
 
         describe('File Forwarder', () => {
             before(() => {
+                const publicKeyPath = path.join(process.cwd(), 'src', 'jwt-signing-key.pub');
+                const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
                 mockFs({
-                    [path.join(path.parse(process.cwd()).root, 'logdir')]: {} // Emtpy folder
+                    [path.join(path.parse(process.cwd()).root, 'logdir')]: {}, // Emtpy folder
+                    [publicKeyPath]: publicKey
                 })
             })
 
@@ -591,7 +626,7 @@ describe('Tap Integration Test', () => {
                     path: logFilePath,
                     maxSize: '10M'
                 }
-                initForwarders([config]);
+                initForwarding([config], { API_KEY });
 
                 const echoResult = await client.callTool({
                     name: 'echo',

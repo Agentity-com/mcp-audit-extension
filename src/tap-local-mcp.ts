@@ -11,7 +11,7 @@ import { readFile } from 'fs/promises';
 import fsExists from 'fs.promises.exists'
 import { constants as osConstants } from 'os';
 import { join as pathJoin } from 'path';
-import { initForwarders, ToolTappingClient } from './tap-services';
+import { initForwarding, ToolTappingClient } from './tap-services';
 import { getAgentId, getVSCodeFolder } from './metadata';
 import { logger } from './logger';
 
@@ -75,7 +75,7 @@ async function main() {
     const jsonContent = await readFile(argv.settingsFile, 'utf8');
     const forwarderConfig = JSON.parse(jsonContent)['mcpAudit.forwarders'];
 
-    initForwarders(forwarderConfig, process.env.forwarderSecrets ? JSON.parse(process.env.forwarderSecrets) : {});
+    initForwarding(forwarderConfig, process.env.forwarderSecrets ? JSON.parse(process.env.forwarderSecrets) : {});
 
     let targetClientTransport: Transport;
     let childProc: ChildProcess | undefined;

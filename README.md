@@ -69,12 +69,14 @@ Any changes made to the original MCP server configurations, including the additi
 
 Configure the extension by navigating to **File > Preferences > Settings** and searching for "MCP Audit", or by directly editing your `settings.json` file.
 
+### Log Forwarders
+
 The extension is configured by defining a list of log forwarders in the `mcpAudit.forwarders` setting. Each forwarder is an object in an array, allowing you to send logs to multiple destinations simultaneously (e.g., to Splunk and a local file).
 
 To add a forwarder, open your `settings.json` and add a new object to the `mcpAudit.forwarders` array.
 <details><summary>Full reference for forwarders configuration</summary>
 
-### Common Properties
+#### Common Properties
 
 Each forwarder object in the array must include the following properties:
 
@@ -84,11 +86,11 @@ Each forwarder object in the array must include the following properties:
 | `enabled` | `boolean` | Enable or disable this specific forwarder.                                           |
 | `type`    | `string`  | The type of forwarder. Must be `HEC`, `CEF`, or `FILE`. This determines other fields. |
 
-### Forwarder-Specific Properties
+#### Forwarder-Specific Properties
 
 Based on the `type` you select, you must provide additional properties.
 
-#### HEC Forwarder (`type: "HEC"`)
+##### HEC Forwarder (`type: "HEC"`)
 
 For sending logs to a Splunk HTTP Event Collector (HEC).
 
@@ -99,7 +101,7 @@ For sending logs to a Splunk HTTP Event Collector (HEC).
 | `sourcetype`     | `string` | (Optional) The sourcetype for the events.                    |
 | `index`          | `string` | (Optional) The Splunk index to send data to.                 |
 
-#### CEF/Syslog Forwarder (`type: "CEF"`)
+##### CEF/Syslog Forwarder (`type: "CEF"`)
 
 For sending logs in Common Event Format (CEF) over Syslog.
 
@@ -109,7 +111,7 @@ For sending logs in Common Event Format (CEF) over Syslog.
 | `port`     | `integer`| The port number of the Syslog server.            |
 | `protocol` | `string` | The transport protocol. Can be `tcp`, `udp`, or `tls`. |
 
-#### File Forwarder (`type: "FILE"`)
+##### File Forwarder (`type: "FILE"`)
 
 For writing logs to a local file.
 
@@ -119,7 +121,7 @@ For writing logs to a local file.
 </details>
 <details><summary>Example of a valid configuration</summary>
 
-### Configuration Example
+#### Configuration Example
 
 Here is an example `settings.json` configuration with three different forwarders defined.
 
@@ -153,7 +155,7 @@ Here is an example `settings.json` configuration with three different forwarders
 </details>
 <details><summary>How to distribute secret tokens securely</summary>
 
-### Secure Token Configuration for HEC
+#### Secure Token Configuration for HEC
 
 To avoid storing sensitive tokens in settings files, the HEC forwarder uses a secure, one-time mechanism to load secrets. The configuration only points to a key, which the extension maps to a secret token value.
 
@@ -173,6 +175,13 @@ The process involves creating a temporary `mcp-tap-secrets.json` file in the use
 On the next launch, the extension will load the token to secret storage and delete the file.
 </details>
 
+### API Key
+
+On audit.agentity.com, you can retrieve an API key for free. With a valid API key, the extension will log the contents of the results or errors of MCP tool calls, as well as the parameters of the requests. The API key is distributed similarly to the secret HEC keys described above. Use the key `API_KEY` within the secrets JSON file:
+    ``` 
+    { "API_KEY": "GENERATED_JWT" } 
+    ```
+
 ## Log Data Format
 
 All tool calls are logged as a JSON object with a consistent structure. This allows for easy parsing and integration with logging platforms and SIEMs.
@@ -188,8 +197,8 @@ All tool calls are logged as a JSON object with a consistent structure. This all
 | `timestamp`     | `string` | The ISO 8601 timestamp indicating when the tool call occurred.                             |
 | `params`        | `object` | The arguments that were provided to the tool.                                              |
 | `_meta`         | `object` | Metadata returned by the MCP server.                        |
-| `result`        | `any`    | The successful result returned by the tool. This field is omitted if an error occurred.    |
-| `error`         | `any`    | The error message or object if the tool call failed. This field is omitted on success.     |
+| `result`        | `any`    | The successful result returned by the tool. This field is omitted if an error occurred. *Only filled if valid API key is set.*    |
+| `error`         | `any`    | The error message or object if the tool call failed. This field is omitted on success. *Only filled if valid API key is set.*     |
 </details>
 <details><summary>Example of MCP tool call record</summary>
 

@@ -10,13 +10,15 @@ import fs from 'fs';
 import path from 'path';
 import { getAgentId, getHostName, getIpAddress } from './metadata';
 import { Syslog, CEF } from 'syslog-pro';
-import tls from 'tls';
-import net from 'net';
 import { createStream as createRotatingFileStream, RotatingFileStream } from 'rotating-file-stream';
 import { logger } from './logger';
+import jwt from 'jsonwebtoken';
+import * as ecdsaSigFormatter from 'ecdsa-sig-formatter';
 
 // For now we do not support TLS verification
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+let hasValidApiKey: boolean = false;
 
 const hostName = getHostName();
 
@@ -78,7 +80,7 @@ export function isForwarding(): boolean {
     return logForwarders.length > 0;
 }
 
-export function initForwarders(fowardersConfig: any[], secrets?: Record<string, string>): void {
+export function initForwarding(fowardersConfig: any[], secrets?: Record<string, string>): void {
     // First, process any new secrets that may have been dropped.
     logger.info('Initializing loggers based on configuration...');
     
@@ -122,6 +124,15 @@ export function initForwarders(fowardersConfig: any[], secrets?: Record<string, 
         } catch (e) {
             logger.error(`Could not create forwarder ${forwarderConfig.name}`, e);
         }
+    }
+
+    // Finally set the API if it is part of the secrets
+    if (secrets?.API_KEY) {
+        logger.info("API key set, validating");
+
+        hasValidApiKey = verifyApiKey(secrets.API_KEY);
+    } else {
+        hasValidApiKey = false;
     }
 }
 
@@ -214,7 +225,7 @@ export class CEFForwarder implements LogForwarder {
         const event = new CEF({
             deviceVendor: 'Agentity',
             deviceProduct: record.agentId,
-            deviceVersion: require('../package.json').version || '1.0',
+            deviceVersion: require(path.join(__dirname, '..', 'package.json')).version || '1.0',
             deviceEventClassId: record.toolName,
             name: record.toolName,
             severity: 1,
@@ -284,14 +295,37 @@ export const populateCallRequestData = (mcpServerName: string, params: CallToolR
     _meta: params._meta,
 });
 
+function verifyApiKey(apiKey: string) : boolean {
+    const publicKey = fs.readFileSync(path.join(__dirname, 'jwt-signing-key.pub'), 'utf8');
+
+    try {
+        const decoded = jwt.verify(apiKey, publicKey, { algorithms: ['RS256'] });
+
+        logger.info('API Key validates successfuly');
+        return true;
+    } catch (err) {
+        console.error('Failed validating API key, responses and errors will not be logged');
+        return false;
+    }
+}
+
 export function fillResultData(result: any, record: Partial<LogRecord>) {
+    const GET_API_KEY_STR = "Get an API key on audit.agentity.com";
     if (result && !result.isError) {
-        record.result = result.structuredContent || result.content; // Prefer structuredContent if available
-    } else {
-        if (result.isError) {
-            record.error = result.content || 'Unknown error';
+        if (hasValidApiKey) {
+            record.result = result.structuredContent || result.content; // Prefer structuredContent if available
         } else {
-            record.error = result.error;
+            record.result = GET_API_KEY_STR;
+        }
+    } else {
+        if (hasValidApiKey) {
+            if (result.isError) {
+                record.error = result.content || 'Unknown error';
+            } else {
+                record.error = result.error;
+            }
+        } else {
+            record.error = GET_API_KEY_STR;
         }
     }
 }
