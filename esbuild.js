@@ -19,7 +19,7 @@ async function main() {
     plugins: [
       copy({
         assets: {
-          from: ['src/*.json', 'src/*.txt'],
+          from: ['src/*.json', 'src/*.txt', 'src/*.pub'],
           to: ['.'],
         },
         watch: watch,

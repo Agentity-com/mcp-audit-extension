@@ -242,7 +242,6 @@ describe('Tap Integration Test', () => {
                 await client.connect(transport).should.be.rejected;
             });
 
-            // Commented out until https://github.com/punkpeye/mcp-proxy/issues/28 is resolved
             // The purpose is to check that the remote MCP proxy dynamically creates PRM and redirects to the OAuth endpoint
             // While it's not a full integration test, I think it is important to have something to verify the complex dynamic flow
             // to simulate the 2025-06-18 spec even for servers that don't support it, this test is important to avoid breakages

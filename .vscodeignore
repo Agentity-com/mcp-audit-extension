@@ -7,3 +7,4 @@ esbuild.js
 tsconfig.json
 tap_server*.log
 *-audit.json
+signJwt_rs256.js
