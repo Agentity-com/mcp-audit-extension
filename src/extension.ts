@@ -205,7 +205,7 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
                 // The following code is fail-open mechanism where we don't want to set up taps where we lack necessary input variables
                 const isWorkspaceServer = serverName in this._workspaceServers;
                 const varError = isWorkspaceServer ? workspaceError : globalError;
-                if (varError) {
+                if (varError !== 'none') {
                     // There was a problem getting the input variable values. Check if this server depends on them.
                     const envInputVars = Object.entries(originalServerConfig.env || {})
                         .filter(([key, val]) => typeof val === 'string' && INPUT_VARIABLE_REGEX.test(val));
