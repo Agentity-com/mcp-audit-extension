@@ -9,7 +9,6 @@
 
 - [Overview](#overview)
 - [Key Use Cases](#key-use-cases)
-- [Demo](#demo)
 - [Installation](#installation)
   - [From the Command Line](#from-the-command-line)
   - [From the Visual Studio Code UI](#from-the-visual-studio-code-ui)
@@ -33,8 +32,6 @@ This extension transparently intercepts and logs all MCP tool calls, forwarding 
 *   **Security & Compliance Audits**: Create a comprehensive audit trail of all MCP tool calls performed by GitHub Copilot, ensuring compliance with audit requirements and identifying potential security risks.
 *   **Centralized Logging**: Aggregate MCP tool usage data from all developers into a central location (e.g., Splunk, Syslog), allowing AI, security, and IT teams to analyze trends and manage AI usage effectively.
 *   **Developer Troubleshooting**: Provide developers with detailed logs of Copilot's tool interactions for easier debugging and a better understanding of its behavior.
-
-## Demo
 
 <!-- MCP Audit Demo Video -->
 <p align="center">
