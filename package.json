@@ -4,7 +4,7 @@
     "description": "Audit and log all GitHub Copilot MCP tool calls in VSCode with ease.",
     "publisher": "Agentity",
     "version": "1.1.1",
-    "preview": true,
+    "preview": false,
     "icon": "logo.png",
     "license": "SEE LICENSE IN LICENSE",
     "keywords": [
