@@ -94,6 +94,8 @@ function getMacAddress(): string | null {
 
 /**
  * Generates or retrieves a unique agent ID.
+ * If we are running as part of the VSCode (production case), then use vscode.env.machineId.
+ * Otherwise:
  * It first checks for a stored ID in the provided storage. If not found, it generates a new ID
  * based on the machine's serial number or MAC address. If neither can be found, it creates a
  * random ID. The new ID is then stored for future use if storage is provided.
@@ -101,6 +103,15 @@ function getMacAddress(): string | null {
  * @returns A promise that resolves to the unique agent ID.
  */
 export function getAgentId(storage?: vscode.Memento): string {
+    try {
+        const vscode = require('vscode');
+        if (vscode) {
+            return vscode.env.machineId;
+        }
+    } catch (error) {
+        // Could not load vscode, proceed with fallback
+    }
+
     if (storage) {
         const storedId = storage.get<string>(AGENT_ID_KEY);
         if (storedId) {
