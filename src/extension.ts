@@ -11,6 +11,7 @@ import {
 import { initForwarding, isForwarding } from './tap-services';
 import { DecryptError, InputVariableRetriever, VarRetrievalError } from './vscode_internal';
 import { logger, SUPPRESS_STDOUT_LOGS_ENV_VAR_NAME } from './logger';
+import { initializeTelemetry, getTelemetryReporter } from './telemetry';
 
 const INPUT_VARIABLE_REGEX: RegExp = /^\$\{input:(.*?)\}$/;
 const TAPPED_SERVER_SUFFIX = ' (tapped)';
@@ -21,6 +22,8 @@ const SECRET_STORAGE_KEY = 'mcpTapForwarderKeys'
 */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     logger.info('Activating MCP Audit extension');
+
+    initializeTelemetry(context);
     
     const getForwardersConfig = () => {
         const config = vscode.workspace.getConfiguration('mcpAudit');
@@ -81,6 +84,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     just bundle the express app proxying all remote servers into the extension process directly.
     */
     startRemoteMcpProxy();
+
+    getTelemetryReporter().sendTelemetryEvent('extensionActivated');
     
     logger.info('MCP Tap Extension active.');
 }

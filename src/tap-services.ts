@@ -13,7 +13,9 @@ import { Syslog, CEF } from 'syslog-pro';
 import { createStream as createRotatingFileStream, RotatingFileStream } from 'rotating-file-stream';
 import { logger } from './logger';
 import jwt from 'jsonwebtoken';
-import * as ecdsaSigFormatter from 'ecdsa-sig-formatter';
+import { getTelemetryReporter } from './telemetry';
+
+let toolCallCount : number = 0;
 
 // For now we do not support TLS verification
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -74,6 +76,9 @@ export async function forwardLog(record: LogRecord) {
     for (const forwarder of logForwarders) {
         await forwarder.forward(record);
     }
+    
+    toolCallCount++;
+    getTelemetryReporter().sendTelemetryEvent('tappedToolCallCount', {}, { 'count': toolCallCount });
 }
 
 export function isForwarding(): boolean {
@@ -134,6 +139,12 @@ export function initForwarding(fowardersConfig: any[], secrets?: Record<string, 
     } else {
         hasValidApiKey = false;
     }
+
+    const forwardersCount = fowardersConfig.reduce((acc, config) => {
+        acc[config.type] = (acc[config.type] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+    getTelemetryReporter().sendTelemetryEvent('configuredForwardersCount', forwardersCount);
 }
 
 // ConsoleLogger implementation
@@ -376,7 +387,7 @@ export class ToolTappingClient extends Client {
         // Forward the log to all registered log forwarders
         // Do NOT await - we want this to be async and non-blocking
         forwardLog(record as LogRecord);
-        
+       
         // Return the result.
         return result;
     }

@@ -11,7 +11,6 @@ try {
     const vscode = require('vscode');
     const displayName = require(resolve(__dirname, "..", "package.json")).displayName;
     logger = vscode.window.createOutputChannel(displayName, { log: true });
-    logger
 } catch (e) {
     /* 
     If 'vscode' module is not found (e.g., in UTs), fall back to the standard console.
