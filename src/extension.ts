@@ -12,16 +12,20 @@ import { initForwarding, isForwarding } from './tap-services';
 import { DecryptError, InputVariableRetriever, VarRetrievalError } from './vscode_internal';
 import { logger, SUPPRESS_STDOUT_LOGS_ENV_VAR_NAME } from './logger';
 import { initializeTelemetry, getTelemetryReporter } from './telemetry';
+import { ToolCallLogProvider } from './view';
 
 const INPUT_VARIABLE_REGEX: RegExp = /^\$\{input:(.*?)\}$/;
 const TAPPED_SERVER_SUFFIX = ' (tapped)';
 const SECRET_STORAGE_KEY = 'mcpTapForwarderKeys'
+const FIRST_RUN_PASSED_FLAG = 'firstRunPassedFlag';
 
 /**
-* Main activation function for the extension.
+ * Main activation function for the extension.
 */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     logger.info('Activating MCP Audit extension');
+    
+    await setupDefaultLogView(context);
 
     initializeTelemetry(context);
     
@@ -94,15 +98,73 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     logger.info('MCP Tap Extension active.');
 }
 
+async function setupDefaultLogView(context: vscode.ExtensionContext) {
+    const logFilePath = path.join(context.globalStorageUri.fsPath, 'mcp-tool-calls.log');
+
+    // Set the default file logger if-and-only-if this is the first extension run
+    // In any other case respect the previous configuration
+    if (!context.globalState.get(FIRST_RUN_PASSED_FLAG)) {
+        await context.globalState.update(FIRST_RUN_PASSED_FLAG, true);
+
+        const config = vscode.workspace.getConfiguration('mcpAudit');
+        const inspectResult = config.inspect<any[]>('forwarders');
+
+        const hasUserConfig = (inspectResult?.globalValue) !== undefined || (inspectResult?.workspaceValue !== undefined);
+
+        // Only proceed if the user has NOT configured any forwarders.
+        if (!hasUserConfig) {
+            const defaultForwarder = {
+                enabled: true,
+                type: "FILE",
+                name: "Default file log. Required for log view panel in VSCode window",
+                maxSize: "10M",
+                path: logFilePath
+            };
+
+            await config.update('forwarders', [defaultForwarder], vscode.ConfigurationTarget.Global);
+
+            logger.info("Setting up default logger on first activation");
+        }
+    }
+    
+    // Register the command that opens the log data
+    context.subscriptions.push(vscode.commands.registerCommand(
+        'mcpExtension.showLogEntry',
+        async (logData: string) => {
+            try {
+                // Beautify the JSON for readability
+                const formattedJson = JSON.stringify(JSON.parse(logData), null, 2);
+
+                const document = await vscode.workspace.openTextDocument({
+                    content: formattedJson,
+                    language: 'json',
+                });
+                await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+            } catch (e) {
+                vscode.window.showErrorMessage("Could not display log entry. It may be malformed.");
+            }
+        }
+    ));
+
+    // Register MCP tool call log view
+    const toolCallLogProvider = new ToolCallLogProvider(logFilePath);
+    vscode.window.registerTreeDataProvider('mcpToolCallLogView', toolCallLogProvider);
+
+    // Watch for changes to the log file and refresh the view
+    const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(context.globalStorageUri, 'mcp-tool-calls.log'));
+    watcher.onDidChange(() => toolCallLogProvider.refresh());
+    watcher.onDidCreate(() => toolCallLogProvider.refresh());
+    watcher.onDidDelete(() => toolCallLogProvider.refresh());
+
+    context.subscriptions.push(watcher);
+}
+
 export function deactivate(): void {
     stopRemoteMcpProxy();
     logger.info('MCP Tap Extension deactivated.');
 }
 
-/*
-Load the log forwarders from the configuration
-*/
-
+// Load the log forwarders from the configuration
 async function loadSecretsFromFile(context: vscode.ExtensionContext): Promise<Record<string, string>> {
     let secretsPath: string;
     

@@ -149,6 +149,25 @@
                     }
                 }
             }
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "mcpToolCallLogContainer",
+                    "title": "MCP Tool Call Logs",
+                    "icon": "mcp-icon-view.png"
+                }
+            ]
+        },
+        "views": {
+            "mcpToolCallLogContainer": [
+                {
+                    "id": "mcpToolCallLogView",
+                    "name": "Tool Call History",
+                    "type": "tree",
+                    "icon": "mcp-icon-view.png"
+                }
+            ]
         }
     },
     "main": "./dist/extension.js",
