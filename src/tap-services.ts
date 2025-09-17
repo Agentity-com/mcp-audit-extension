@@ -291,7 +291,7 @@ export class FileForwarder implements LogForwarder {
             this.stream.write(`${JSON.stringify(record)}\n`);
 
             // For some reason VSCode's FileSystemWatcher failed for me on MacOS. Doing this slightly hacky instead
-            if (this.path.endsWith('\\mcp-tool-calls.log')) {
+            if (this.path.endsWith('mcp-tool-calls.log')) {
                 viewEvents.emit('logFileUpdated');
             }
         } catch (err) {
