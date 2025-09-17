@@ -30,7 +30,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return config.get<any[]>('forwarders', []).filter(f => f.enabled);
     }
     
-    initForwarding(getForwardersConfig(), await loadSecretsFromFile(context));
+    const secrets = await loadSecretsFromFile(context);
+    initForwarding(getForwardersConfig(), secrets);
     
     const provider = new TapMcpServerDefinitionProvider(context);
     let disposable = vscode.lm.registerMcpServerDefinitionProvider(
@@ -85,7 +86,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     */
     startRemoteMcpProxy();
 
-    getTelemetryReporter().sendTelemetryEvent('extensionActivated');
+    const deploymentArg = secrets?.API_KEY
+        ? { deploymentId: require('crypto').createHash('sha256').update(secrets.API_KEY).digest('hex') }
+        : undefined;
+    getTelemetryReporter().sendTelemetryEvent('extensionActivated', deploymentArg);
     
     logger.info('MCP Tap Extension active.');
 }
