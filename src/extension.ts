@@ -149,14 +149,6 @@ async function setupDefaultLogView(context: vscode.ExtensionContext) {
     // Register MCP tool call log view
     const toolCallLogProvider = new ToolCallLogProvider(logFilePath);
     vscode.window.registerTreeDataProvider('mcpToolCallLogView', toolCallLogProvider);
-
-    // Watch for changes to the log file and refresh the view
-    const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(context.globalStorageUri, 'mcp-tool-calls.log'));
-    watcher.onDidChange(() => toolCallLogProvider.refresh());
-    watcher.onDidCreate(() => toolCallLogProvider.refresh());
-    watcher.onDidDelete(() => toolCallLogProvider.refresh());
-
-    context.subscriptions.push(watcher);
 }
 
 export function deactivate(): void {
