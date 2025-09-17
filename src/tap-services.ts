@@ -14,7 +14,7 @@ import { createStream as createRotatingFileStream, RotatingFileStream } from 'ro
 import { logger } from './logger';
 import jwt from 'jsonwebtoken';
 import { getTelemetryReporter } from './telemetry';
-import { viewEvents } from './view';
+import { extensionEvents } from './events';
 
 let toolCallCount : number = 0;
 
@@ -292,7 +292,7 @@ export class FileForwarder implements LogForwarder {
 
             // For some reason VSCode's FileSystemWatcher failed for me on MacOS. Doing this slightly hacky instead
             if (this.path.endsWith('mcp-tool-calls.log')) {
-                viewEvents.emit('logFileUpdated');
+                extensionEvents.emit('logFileUpdated');
             }
         } catch (err) {
             logger.error(`Error writing record to log file ${this.path}`, err);

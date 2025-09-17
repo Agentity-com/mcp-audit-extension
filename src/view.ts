@@ -1,9 +1,6 @@
-// in a new file, e.g., src/LogEntryItem.ts
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import { EventEmitter } from 'events';
-
-export const viewEvents = new EventEmitter();
+import { extensionEvents } from './events';
 
 class LogEntryItem extends vscode.TreeItem {
     constructor(
@@ -28,7 +25,7 @@ export class ToolCallLogProvider implements vscode.TreeDataProvider<LogEntryItem
     readonly onDidChangeTreeData: vscode.Event<LogEntryItem | undefined | null | void> = this._onDidChangeTreeData.event;
     
     constructor(private logFilePath: string) {
-        viewEvents.on('logFileUpdated', () => this.refresh());
+        extensionEvents.on('logFileUpdated', () => this.refresh());
     }
 
     refresh(): void {
