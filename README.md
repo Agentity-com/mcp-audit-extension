@@ -67,7 +67,13 @@ code --install-extension agentity.mcp-audit-extension
 
 Upon installation, the extension automatically identifies all configured MCP servers in your VS Code settings. For each original server, it creates a mirrored `(tapped)` version.
 
-To enable auditing, you must use these `(tapped)` servers. GitHub Copilot will indicate that new servers are available via a blue refresh icon in the chat panel's agent mode selector. Simply start the tapped servers when prompted.
+To enable auditing, you must use these `(tapped)` servers. GitHub Copilot will indicate that new servers are available via a blue refresh icon in the chat panel's agent mode selector. Simply start the tapped servers when prompted.                               
+
+The extension also adds a new view to the Explorer sidebar called **MCP Audit Log**. This view displays the last tool calls that have been logged, providing a quick and convenient way to review recent activity. This feature depends on the default file logger being enabled.
+View icon:
+<p align="left">
+  <img src="mcp-icon-view.png" alt="MCP Icon View" width="80"/>
+</p>
 
 Any changes made to the original MCP server configurations, including the addition of new ones, will be automatically reflected in their corresponding tapped versions.
 
@@ -75,7 +81,7 @@ Any changes made to the original MCP server configurations, including the additi
 
 ## Configuration
 
-Configure the extension by navigating to **File > Preferences > Settings** and searching for "MCP Audit", or by directly editing your `settings.json` file.
+Configure the extension by navigating to **File > Preferences > Settings** and searching for "MCP Audit", or by directly editing your `settings.json` file. By default, a local file logger will be set up to log to the extension's data folder.                  
 
 ### Log Forwarders
 
@@ -136,6 +142,13 @@ Here is an example `settings.json` configuration with three different forwarders
 ```json
 {
   "mcpAudit.forwarders": [
+    {
+      "name": "Default File Logger",
+      "enabled": true,
+      "type": "FILE",
+      "maxSize": "10M",
+      "path": "C:\\Users\\john.smith\\AppData\\Roaming\\Code\\User\\globalStorage\\agentity.mcp-audit-extension\\mcp-tool-calls.log"
+    },
     {
       "name": "Splunk Production",
       "enabled": true,
