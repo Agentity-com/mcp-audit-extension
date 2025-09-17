@@ -93,7 +93,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const deploymentArg = secrets?.API_KEY
         ? { deploymentId: require('crypto').createHash('sha256').update(secrets.API_KEY).digest('hex') }
         : undefined;
-    getTelemetryReporter().sendTelemetryEvent('extensionActivated', deploymentArg);
+    getTelemetryReporter().sendTelemetryEvent('extensionActivated', deploymentArg as Record<string, string>);
     
     logger.info('MCP Tap Extension active.');
 }
