@@ -234,11 +234,14 @@ class TapMcpServerDefinitionProvider implements vscode.McpServerDefinitionProvid
         // of VSCode that are not accessible via the API. There is an underlying assumption here:
         // If the problem is due to format, a broader and earlier error would be thrown, so if we
         // reached DecryptError we can be sure it is the real issue
-        const workspaceVarRetriever = new InputVariableRetriever(this._context, true);        
+        // Workspace might not be open and therefore not exist in context
+        const workspaceVarRetriever = !!this.context.storageUri && new InputVariableRetriever(this._context, true);        
         const globalVarRetriever = new InputVariableRetriever(this._context, false); 
         let workspaceError, globalError: VarRetrievalError;
         try {
-            await workspaceVarRetriever.getInputVariablesFromDB(false);
+            if (workspaceVarRetriever) {
+                await workspaceVarRetriever.getInputVariablesFromDB(false);
+            }
             workspaceError = 'none';
         }
         catch (err) {
