@@ -43,8 +43,6 @@ chai.should();
 
 tmp.setGracefulCleanup();
 
-const API_KEY = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJteS1hdXRoLXNlcnZpY2UiLCJzdWIiOiJ1c2VyLWlkLTEyMyIsImF1ZCI6Im15LWFwaSIsImlhdCI6MTc1ODAyNzYzNywiZXhwIjoxODQ0NDI3NjM3fQ.LvMgqkpR6Jieygv_JaIvrbmjjwmzj5azvCcOkmADTO95KQo8THarnJNNKphPcDplWzURDB5T9gd5CPi7_4_L1AXNWS9oh-xvfd_q4all8lSpXGAH0MEmN0vTXSah8yuC8i5snhDRFtEvYfv0lkq7PA-SkbulkWHNzwbOHlIrMHvmFRtbP2LEkc5bZ0A0EvAlqKtw1puILpfvW-AFdSib993V6Csg76zmYL5qRHk9Hi1K63x8EtWKYB6ozWBCdjfmBAJ75MaRFMaGk6_e0p-jCR_ZW_dTpgo-Ekn6SAmKHkDHb4dqrL0Rt9LMlLzNG0NxDlCuRvmuKlXTFgIBbVrwoA';
-
 // TODO: This test file grew to suck, in particulal all the after and before. Learn Mocha fixtures better and refactor. Use AI.
 
 describe('Tap Integration Test', () => {
@@ -168,12 +166,8 @@ describe('Tap Integration Test', () => {
             }
         >,
         forwarderConfig: any,
-        secrets: Record<string, string> = {},
-        hasApiKey: boolean = true,
+        secrets: Record<string, string> = {}
     ) {
-        if (hasApiKey) {
-            secrets = { ...secrets, API_KEY };
-        }
         initForwarding([forwarderConfig], secrets);
 
         // Test the echo tool
@@ -194,7 +188,7 @@ describe('Tap Integration Test', () => {
         };
         expect(tapMessages).to.containSubset([{
             ...resultBase,
-            result: hasApiKey ? [{ text: 'test' }] : 'Get an API key on audit.agentity.com' 
+            result: [{ text: 'test' }]
         }]);
     }
 
@@ -304,10 +298,6 @@ describe('Tap Integration Test', () => {
                 it('Should echo a value and forward the log', async () => {
                     await testToolLogForwarding(client, forwarderConfig);
                 })
-
-                it('Should not log results if no API key', async() => {
-                    await testToolLogForwarding(client, forwarderConfig, {}, false);
-                });
             })
         });
 
@@ -333,7 +323,7 @@ describe('Tap Integration Test', () => {
     describe('Local MCP Servers Tap', () => {
         // These tests spin up a single local tap proxy server and tests its functionality
 
-        function createTransport(hasApiKey: boolean = true) {
+        function createTransport() {
             const tapMcpPath = path.join(__dirname, '..', 'tap-local-mcp.ts');
             const dummyServerPath = path.join(__dirname, 'dummy_server.ts');
 
@@ -368,16 +358,14 @@ describe('Tap Integration Test', () => {
                         'node_modules',
                         '.bin'
                     )}${path.delimiter}${process.env.PATH}`,
-                    forwarderSecrets: hasApiKey 
-                                ? `{"API_KEY":"${API_KEY}"}`
-                                : ''
+                    forwarderSecrets: ''
                 },
             });
             return transport;
         }
 
         before(async () => {
-            const transport = createTransport(true);
+            const transport = createTransport();
 
             // Create a FastMCP client to connect to the tap process
             client = new Client({
@@ -406,21 +394,6 @@ describe('Tap Integration Test', () => {
             const envResult = await client.callTool({ name: 'env' });
             const envVars = JSON.parse((envResult.content as any[])[0].text);
             expect(envVars).to.have.property('DUMMY_ENV', 'dummy value');
-        });
-
-        it('Should not log results if no API key', async() => {
-            const transport = createTransport(false);
-
-            // Create a FastMCP client to connect to the tap process
-            const clientWithoutApiKey = new Client({
-                name: 'Dummy Client',
-                version: '1.0.0',
-            });
-
-            await clientWithoutApiKey.connect(transport);
-            await testToolLogForwarding(clientWithoutApiKey, forwarderConfig, {}, false);
-
-            clientWithoutApiKey.close();
         });
     });
 
@@ -604,11 +577,8 @@ describe('Tap Integration Test', () => {
 
         describe('File Forwarder', () => {
             before(() => {
-                const publicKeyPath = path.join(process.cwd(), 'src', 'jwt-signing-key.pub');
-                const publicKey = fs.readFileSync(publicKeyPath, 'utf8');
                 mockFs({
-                    [path.join(path.parse(process.cwd()).root, 'logdir')]: {}, // Emtpy folder
-                    [publicKeyPath]: publicKey
+                    [path.join(path.parse(process.cwd()).root, 'logdir')]: {} // Emtpy folder
                 })
             })
 
@@ -625,7 +595,7 @@ describe('Tap Integration Test', () => {
                     path: logFilePath,
                     maxSize: '10M'
                 }
-                initForwarding([config], { API_KEY });
+                initForwarding([config]);
 
                 const echoResult = await client.callTool({
                     name: 'echo',

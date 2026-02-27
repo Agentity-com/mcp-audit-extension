@@ -12,32 +12,29 @@ import { getAgentId, getHostName, getIpAddress } from './metadata';
 import { Syslog, CEF } from 'syslog-pro';
 import { createStream as createRotatingFileStream, RotatingFileStream } from 'rotating-file-stream';
 import { logger } from './logger';
-import jwt from 'jsonwebtoken';
 import { getTelemetryReporter } from './telemetry';
 import { extensionEvents } from './events';
 
-let toolCallCount : number = 0;
+let toolCallCount: number = 0;
 
 // For now we do not support TLS verification
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-let hasValidApiKey: boolean = false;
-
 const hostName = getHostName();
 
 const descriptionPrefix: string =
-fs.readFileSync(path.join(__dirname, 'tool_preference_prefix.txt'), 'utf8');
+    fs.readFileSync(path.join(__dirname, 'tool_preference_prefix.txt'), 'utf8');
 
 export function prefixToolDescriptions(response: any): any {
     if (!response?.tools || !Array.isArray(response.tools)) {
         return response;
     }
-    
+
     const modifiedTools = response.tools.map((tool: any) => ({
         ...tool,
         description: tool.description ? `${descriptionPrefix}${tool.description}` : tool.description
     }));
-    
+
     return {
         ...response,
         tools: modifiedTools,
@@ -77,7 +74,7 @@ export async function forwardLog(record: LogRecord) {
     for (const forwarder of logForwarders) {
         await forwarder.forward(record);
     }
-    
+
     toolCallCount++;
     getTelemetryReporter().sendTelemetryEvent('tappedToolCallCount', {}, { 'count': toolCallCount });
 }
@@ -89,10 +86,10 @@ export function isForwarding(): boolean {
 export function initForwarding(fowardersConfig: any[], secrets?: Record<string, string>): void {
     // First, process any new secrets that may have been dropped.
     logger.info('Initializing loggers based on configuration...');
-    
+
     // De-initialize old loggers here if necessary...
     resetLogForwarders();
-    
+
     for (const forwarderConfig of fowardersConfig) {
         try {
             switch (forwarderConfig.type) {
@@ -106,13 +103,13 @@ export function initForwarding(fowardersConfig: any[], secrets?: Record<string, 
                     }
                     break;
                 }
-                
+
                 case 'CEF': {
                     addLogForwarder(new CEFForwarder(forwarderConfig));
                     logger.info(`Set up CEF/Syslog forwarder: ${forwarderConfig.name}`);
                     break;
                 }
-                
+
                 case 'FILE': {
                     if (path.isAbsolute(forwarderConfig.path)) {
                         addLogForwarder(new FileForwarder(forwarderConfig));
@@ -123,22 +120,13 @@ export function initForwarding(fowardersConfig: any[], secrets?: Record<string, 
                     }
                     break;
                 }
-                
+
                 default:
-                throw new Error(`Unknown forwarder type ${forwarderConfig.type}`);
+                    throw new Error(`Unknown forwarder type ${forwarderConfig.type}`);
             }
         } catch (e) {
             logger.error(`Could not create forwarder ${forwarderConfig.name}`, e);
         }
-    }
-
-    // Finally set the API if it is part of the secrets
-    if (secrets?.API_KEY) {
-        logger.info("API key set, validating");
-
-        hasValidApiKey = verifyApiKey(secrets.API_KEY);
-    } else {
-        hasValidApiKey = false;
     }
 
     const forwardersCount = fowardersConfig.reduce((acc, config) => {
@@ -161,14 +149,14 @@ export class HECForwarder implements LogForwarder {
     private token: string;
     private sourcetype?: string;
     private index?: string;
-    
+
     constructor(config: any) {
         this.url = config.url;
         this.token = config.token;
         this.sourcetype = config.sourcetype;
         this.index = config.index;
     }
-    
+
     async forward(record: LogRecord): Promise<void> {
         // Send log to Splunk HEC endpoint
         const urlObj = new URL(this.url);
@@ -180,7 +168,7 @@ export class HECForwarder implements LogForwarder {
             time: Date.parse(record.timestamp) / 1000
         };
         const data = JSON.stringify(payload);
-        
+
         const options: any = {
             hostname: urlObj.hostname,
             port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
@@ -192,10 +180,10 @@ export class HECForwarder implements LogForwarder {
                 'Content-Length': Buffer.byteLength(data)
             }
         };
-        
+
         // Use https or http
         const httpModule = urlObj.protocol === 'https:' ? require('https') : require('http');
-        
+
         try {
             await new Promise<void>((resolve, reject) => {
                 const req = httpModule.request(options, (res: any) => {
@@ -224,7 +212,7 @@ export class HECForwarder implements LogForwarder {
 // CEF/Syslog Forwarder
 export class CEFForwarder implements LogForwarder {
     private syslogClient: Syslog;
-    
+
     constructor(config: any) {
         this.syslogClient = new Syslog({
             target: config.host,
@@ -232,7 +220,7 @@ export class CEFForwarder implements LogForwarder {
             protocol: config.protocol
         })
     }
-    
+
     async forward(record: LogRecord): Promise<void> {
         const event = new CEF({
             deviceVendor: 'Agentity',
@@ -241,7 +229,7 @@ export class CEFForwarder implements LogForwarder {
             deviceEventClassId: record.toolName,
             name: record.toolName,
             severity: 1,
-            
+
             extensions: {
                 ...{
                     rt: record.timestamp,
@@ -259,7 +247,7 @@ export class CEFForwarder implements LogForwarder {
             },
             server: this.syslogClient
         });
-        
+
         try {
             await event.send();
         } catch (error) {
@@ -272,20 +260,20 @@ export class CEFForwarder implements LogForwarder {
 export class FileForwarder implements LogForwarder {
     private stream: RotatingFileStream;
     private path: string;
-    
+
     constructor(config: any) {
         // Extract the directory and filename
         this.path = config.path;
         const logDirectory = path.dirname(config.path);
         const logFilename = path.basename(config.path);
-        
+
         this.stream = createRotatingFileStream(logFilename, {
             path: logDirectory,
             size: config.maxSize || '10M',
             maxFiles: 1       // Set to 0 to ensure only the single active file is kept
         });
     }
-    
+
     async forward(record: LogRecord): Promise<void> {
         try {
             this.stream.write(`${JSON.stringify(record)}\n`);
@@ -301,7 +289,7 @@ export class FileForwarder implements LogForwarder {
 }
 
 export const populateCallRequestData = (mcpServerName: string, params: CallToolRequest['params']): Partial<LogRecord> =>
-    ({
+({
     mcpServerName: mcpServerName,
     agentId: getAgentId(),
     hostName,
@@ -312,37 +300,14 @@ export const populateCallRequestData = (mcpServerName: string, params: CallToolR
     _meta: params._meta,
 });
 
-function verifyApiKey(apiKey: string) : boolean {
-    const publicKey = fs.readFileSync(path.join(__dirname, 'jwt-signing-key.pub'), 'utf8');
-
-    try {
-        const decoded = jwt.verify(apiKey, publicKey, { algorithms: ['RS256'] });
-
-        logger.info('API Key validates successfuly');
-        return true;
-    } catch (err) {
-        console.error('Failed validating API key, responses and errors will not be logged');
-        return false;
-    }
-}
-
 export function fillResultData(result: any, record: Partial<LogRecord>) {
-    const GET_API_KEY_STR = "Get an API key on audit.agentity.com";
     if (result && !result.isError) {
-        if (hasValidApiKey) {
-            record.result = result.structuredContent || result.content; // Prefer structuredContent if available
-        } else {
-            record.result = GET_API_KEY_STR;
-        }
+        record.result = result.structuredContent || result.content; // Prefer structuredContent if available
     } else {
-        if (hasValidApiKey) {
-            if (result.isError) {
-                record.error = result.content || 'Unknown error';
-            } else {
-                record.error = result.error;
-            }
+        if (result.isError) {
+            record.error = result.content || 'Unknown error';
         } else {
-            record.error = GET_API_KEY_STR;
+            record.error = result.error;
         }
     }
 }
@@ -350,11 +315,11 @@ export function fillResultData(result: any, record: Partial<LogRecord>) {
 // A custom client class that extends the base MCP Client to intercept tool lists and calls.
 export class ToolTappingClient extends Client {
     private originalTargetName: string = "";
-    
+
     init(name: string) {
         this.originalTargetName = name;
     }
-    
+
     /**
     * Overrides the listTools method to modify the descriptions of the returned tools.
     * The base method returns an object with a 'tools' property.
@@ -367,10 +332,10 @@ export class ToolTappingClient extends Client {
     ) {
         // First, retrieve the original result by running listTools of the superclass.
         const originalResponse = await super.listTools(params, options);
-        
+
         return prefixToolDescriptions(originalResponse);
     }
-    
+
     /**
     * Overrides the callTool method to log the tool call and its result.
     * The base method expects a single object for its parameters.
@@ -380,20 +345,20 @@ export class ToolTappingClient extends Client {
     async callTool(
         params: CallToolRequest['params'],
         resultSchema:
-        | typeof CallToolResultSchema
-        | typeof CompatibilityCallToolResultSchema = CallToolResultSchema,
+            | typeof CallToolResultSchema
+            | typeof CompatibilityCallToolResultSchema = CallToolResultSchema,
         options?: RequestOptions
     ) {
         // Perform the original functionality by running callTool of the super class.
         const result = await super.callTool(params, resultSchema, options);
-        
+
         const record: Partial<LogRecord> = populateCallRequestData(this.originalTargetName, params);
         fillResultData(result, record);
-        
+
         // Forward the log to all registered log forwarders
         // Do NOT await - we want this to be async and non-blocking
         forwardLog(record as LogRecord);
-       
+
         // Return the result.
         return result;
     }
