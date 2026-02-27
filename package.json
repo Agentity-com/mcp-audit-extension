@@ -2,8 +2,14 @@
     "name": "mcp-audit-extension",
     "displayName": "MCP Audit",
     "description": "Audit and log all GitHub Copilot MCP tool calls in VSCode with ease.",
+<<<<<<< HEAD
     "publisher": "Agentity",
     "version": "1.1.8,"preview": false,
+=======
+    "publisher": "mcp-audit",
+    "version": "1.1.9",
+    "preview": false,
+>>>>>>> abb5f07 (1.1.9)
     "icon": "logo.png",
     "license": "SEE LICENSE IN LICENSE",
     "keywords": [
