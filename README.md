@@ -1,6 +1,5 @@
-# MCP Audit by Agentity
+# MCP Audit
 
-[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/agentity.mcp-audit-extension.svg)](https://marketplace.visualstudio.com/items?itemName=agentity.mcp-audit-extension)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Audit and log all GitHub Copilot MCP tool calls in VSCode with ease.**
@@ -52,14 +51,14 @@ MCP Audit is built for enterprise environments and is fully manageable via MDM o
 Install the extension directly from the marketplace using the appropriate command for your operating system.
 
 ```shell
-code --install-extension agentity.mcp-audit-extension
+code --install-extension mcp-audit-extension
 ```
 
 ### From the Visual Studio Code UI
 
 1.  Open Visual Studio Code.
 2.  Navigate to the **Extensions** view (`Ctrl+Shift+X`).
-3.  Search for "**MCP Audit by Agentity**".
+3.  Search for "**MCP Audit**".
 4.  Click **Install**.
 
 
@@ -147,7 +146,7 @@ Here is an example `settings.json` configuration with three different forwarders
       "enabled": true,
       "type": "FILE",
       "maxSize": "10M",
-      "path": "C:\\Users\\john.smith\\AppData\\Roaming\\Code\\User\\globalStorage\\agentity.mcp-audit-extension\\mcp-tool-calls.log"
+      "path": "C:\\Users\\john.smith\\AppData\\Roaming\\Code\\User\\globalStorage\\mcp-audit-extension\\mcp-tool-calls.log"
     },
     {
       "name": "Splunk Production",
@@ -198,7 +197,7 @@ On the next launch, the extension will load the token to secret storage and dele
 
 ### API Key
 
-On audit.agentity.com, you can retrieve an API key for free. With a valid API key, the extension will log the contents of the results or errors of MCP tool calls, as well as the parameters of the requests. The API key is distributed similarly to the secret HEC keys described above. Use the key `API_KEY` within the secrets JSON file:
+With a valid API key, the extension will log the contents of the results or errors of MCP tool calls, as well as the parameters of the requests. The API key is distributed similarly to the secret HEC keys described above. Use the key `API_KEY` within the secrets JSON file:
     ``` 
     { "API_KEY": "GENERATED_JWT" } 
     ```
@@ -278,9 +277,9 @@ You can view live logs in the VS Code **Output** panel:
     *   **`MCP Server: <Server Name> (tapped)`**: For logs specific to a tapped MCP server, including details on individual tool calls.
 
 For persistent log files on disk, check the following locations based on your operating system.
-*   **Windows**: `%APPDATA%\Code\logs\<timestamp>\window<X>\exthost\Agentity.mcp-audit-extension\MCP Audit Extension.log`
-*   **macOS**: `~/Library/Application Support/Code/logs/<timestamp>/window<X>\exthost/Agentity.mcp-audit-extension/MCP Audit Extension.log`
-*   **Linux**: `~/.config/Code/logs/<timestamp>/exthost/window<X>\Agentity.mcp-audit-extension/MCP Audit Extension.log`
+*   **Windows**: `%APPDATA%\Code\logs\<timestamp>\window<X>\exthost\mcp-audit-extension\MCP Audit Extension.log`
+*   **macOS**: `~/Library/Application Support/Code/logs/<timestamp>/window<X>\exthost/mcp-audit-extension/MCP Audit Extension.log`
+*   **Linux**: `~/.config/Code/logs/<timestamp>/exthost/window<X>\mcp-audit-extension/MCP Audit Extension.log`
 
 Replace `<timestamp>` with the relevant folder for your session (e.g., `20250729T103000`). There are multiple window folders that correlate to separate instantiations of VScode on that day. Look for errors indicating that forwarders could not be reached or were misconfigured.
 
@@ -288,12 +287,11 @@ Replace `<timestamp>` with the relevant folder for your session (e.g., `20250729
 If you have followed the steps above and are still unable to resolve the issue, please reach out for assistance. You can:
 
 *   **Open an Issue on GitHub**: For the most efficient support, please [open an issue](https://github.com/agentborisdanilovich/mcp-audit-extension/issues) on our GitHub repository. Include any relevant, non-sensitive snippets from your logs.
-*   **Email Support**: Alternatively, you can contact our support team at support@agentity.com.
 
 ## FAQ
 
-*   **What data is sent to the Agentity cloud?**
-    The Agentity cloud only collects a registration event when the extension launches for product usage statistics. The only information sent is an anonymous (hashed) agent ID and an API key provided by Agentity. No tool call data or user content is sent to Agentity.
+*   **What data is sent to the cloud?**
+    The cloud only collects a registration event when the extension launches for product usage statistics. The only information sent is an anonymous (hashed) agent ID and an API key provided by the service. No tool call data or user content is sent to the cloud.
 
 *   **What is the performance impact of the audit?**
     The resource footprint is minimal. Log forwarding is performed asynchronously to avoid impacting the user experience. Any delay introduced is negligible compared to the overall processing time of a GitHub Copilot prompt.
@@ -302,12 +300,9 @@ If you have followed the steps above and are still unable to resolve the issue, 
     By default, VS Code automatically updates extensions from the marketplace. We recommend leaving this setting enabled to ensure you receive the latest features and fixes.
 
 *   **How can I submit a feature request?**
-    We welcome your feedback! Please send your ideas and feature requests to support@agentity.com, or open an issue on GitHub.
+    We welcome your feedback! Please open an issue on GitHub.
 
 ## License
  
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## Contact
-
-For questions, support, or feature requests, please contact us at [support@agentity.com](mailto:support@agentity.com).

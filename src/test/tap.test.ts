@@ -524,7 +524,7 @@ describe('Tap Integration Test', () => {
                 req.on('end', () => {
                     try {
                         const hecPayload = JSON.parse(body);
-                        expect(hecPayload.sourcetype).is.eq('agentity');
+                        expect(hecPayload.sourcetype).is.eq('mcp:event');
                         expect(hecPayload.index).is.eq('mcp');
                         if (hecPayload?.event) {
                             tapMessages.push(hecPayload.event);
@@ -546,7 +546,7 @@ describe('Tap Integration Test', () => {
                     enabled: true,
                     url: 'http://127.0.0.1:8000/services/collector',
                     port: 8000,
-                    sourcetype: 'agentity',
+                    sourcetype: 'mcp:event',
                     index: 'mcp',
                     tokenSecretKey: 'TOKENKEY'
                 };
@@ -566,7 +566,7 @@ describe('Tap Integration Test', () => {
                     enabled: true,
                     url: 'https://127.0.0.1:8000/services/collector',
                     port: 8000,
-                    sourcetype: 'agentity',
+                    sourcetype: 'mcp:event',
                     index: 'mcp',
                     tokenSecretKey: 'TOKENKEY'
                 };

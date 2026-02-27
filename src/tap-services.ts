@@ -223,7 +223,7 @@ export class CEFForwarder implements LogForwarder {
 
     async forward(record: LogRecord): Promise<void> {
         const event = new CEF({
-            deviceVendor: 'Agentity',
+            deviceVendor: 'MCP Audit',
             deviceProduct: record.agentId,
             deviceVersion: require(path.join(__dirname, '..', 'package.json')).version || '1.0',
             deviceEventClassId: record.toolName,

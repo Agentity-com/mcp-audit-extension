@@ -6,8 +6,6 @@ As we are in the early stages of development, we are currently focused on establ
 
 For this reason, **we are not accepting pull requests at this time.**
 
-The most valuable way you can help us right now is by providing feedback. Please feel free to:
-* Report bugs by **opening an issue**.
-* Suggest enhancements or new features to support@agentity.com.
+The most valuable way you can help us right now is by providing feedback. Please feel free to report bugs or suggest enhancements by **opening an issue**.
 
 We are working hard to formalize our contribution model and will update this guide as soon as we are ready to welcome code contributions. Thank you for your support!
